@@ -1,0 +1,63 @@
+ngx_addon_name=ngx_http_auth_webauthn_module
+
+# --- submodule: nxe-json ---
+# JSON parsing/serialisation (jansson wrapper, opaque nxe_json_t).
+# Replaces the former hand-written ngx_auth_webauthn_json.c.
+nxe_json_dir="$ngx_addon_dir/nxe-json"
+
+if [ ! -f "$nxe_json_dir/config.ngx" ]; then
+    echo "$0: error: $nxe_json_dir/config.ngx not found." \
+         "Run: git submodule update --init --recursive" >&2
+    exit 1
+fi
+
+. "$nxe_json_dir/config.ngx"
+
+# --- submodule: nxe-jwx ---
+# JWT decode / JWS verify / JWKS (opaque nxe_jwx_*).  This module mints
+# its own session JWT, so HMAC (HS256, the default jwt_alg) is compiled
+# in here; the issuing side is provided by nxe-jwx's encode API.
+nxe_jwx_dir="$ngx_addon_dir/nxe-jwx"
+
+if [ ! -f "$nxe_jwx_dir/config.ngx" ]; then
+    echo "$0: error: $nxe_jwx_dir/config.ngx not found." \
+         "Run: git submodule update --init --recursive" >&2
+    exit 1
+fi
+
+# Enable HMAC (HS256/384/512) for the session cookie JWT.
+CFLAGS="$CFLAGS -DNXE_JWX_HAVE_HMAC"
+
+. "$nxe_jwx_dir/config.ngx"
+
+# --- module definition ---
+#
+# Layer order (bottom to top):
+#   nxe-json / hash -> redis -> challenge / credential
+#   -> clientdata / authdata -> assertion -> nxe-jwx -> module entry
+#
+# base64url is provided by nginx core (ngx_encode_base64url /
+# ngx_decode_base64url); there is no separate base64 source file.
+#
+# attestation.c and cose.c are intentionally NOT included here: the
+# authentication gate does not parse attestation objects.  They are used by
+# the admin CLI (tools/admin/) only.  Add them to the module build (and
+# append -lcbor) when the registration handlers land.
+ngx_module_type=HTTP
+ngx_module_name=ngx_http_auth_webauthn_module
+ngx_module_deps="$nxe_json_module_deps $nxe_jwx_module_deps"
+ngx_module_incs="$nxe_json_module_incs $nxe_jwx_module_incs"
+ngx_module_srcs="\
+  $nxe_json_module_srcs \
+  $nxe_jwx_module_srcs \
+  $ngx_addon_dir/src/ngx_auth_webauthn_hash.c \
+  $ngx_addon_dir/src/ngx_auth_webauthn_redis.c \
+  $ngx_addon_dir/src/ngx_auth_webauthn_challenge.c \
+  $ngx_addon_dir/src/ngx_auth_webauthn_credential.c \
+  $ngx_addon_dir/src/ngx_auth_webauthn_clientdata.c \
+  $ngx_addon_dir/src/ngx_auth_webauthn_authdata.c \
+  $ngx_addon_dir/src/ngx_auth_webauthn_assertion.c \
+  $ngx_addon_dir/src/ngx_http_auth_webauthn_module.c"
+ngx_module_libs="$nxe_json_module_libs $nxe_jwx_module_libs -lhiredis"
+
+. auto/module
