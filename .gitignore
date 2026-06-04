@@ -1,0 +1,37 @@
+# NGINX build
+/build/
+
+# Admin CLI build
+/tools/admin/build/
+/tools/admin/auth-webauthn-admin
+
+# C/C++ intermediate
+*.o
+*.d
+*.so
+*.a
+
+# Unit tests
+/tests/unit/build/
+/tests/unit/*.bin
+
+# Editors / IDEs
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.iml
+.cache/
+compile_commands.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python (examples/register/)
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
