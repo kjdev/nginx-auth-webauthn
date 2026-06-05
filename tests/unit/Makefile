@@ -8,24 +8,34 @@
 
 CC          ?= cc
 
-SRC_DIR     := ../../src
-COMPAT_DIR  := ../../tools/admin/ngx_compat
+SRC_DIR      := ../../src
+COMPAT_DIR   := ../../tools/admin/ngx_compat
+NXE_JSON_DIR := ../../nxe-json/src
 
 WARN_FLAGS  := -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 \
                -Wpointer-arith -Wstrict-prototypes -Wmissing-prototypes
 
 BASE_CFLAGS := -std=c11 -D_GNU_SOURCE $(WARN_FLAGS) \
-               -I$(COMPAT_DIR) -I$(SRC_DIR)
+               -I$(COMPAT_DIR) -I$(SRC_DIR) -I$(NXE_JSON_DIR)
 
 CFLAGS      ?= -O2 -g $(BASE_CFLAGS)
 
-# crypto: OpenSSL EVP (SHA-256 and, later, signature verification).
-LDLIBS      := -lcrypto
+# crypto: OpenSSL EVP (SHA-256, COSE->DER).  jansson: pulled in by nxe-json
+# for clientDataJSON parsing.  cbor: COSE_Key decoding.
+LDLIBS      := -lcrypto -ljansson -lcbor
 
 SRCS        := \
-    test_runner.c \
+    test_main.c \
+    test_hash.c \
+    test_authdata.c \
+    test_clientdata.c \
+    test_cose.c \
     $(COMPAT_DIR)/ngx_compat.c \
-    $(SRC_DIR)/ngx_auth_webauthn_hash.c
+    $(NXE_JSON_DIR)/nxe_json.c \
+    $(SRC_DIR)/ngx_auth_webauthn_hash.c \
+    $(SRC_DIR)/ngx_auth_webauthn_authdata.c \
+    $(SRC_DIR)/ngx_auth_webauthn_clientdata.c \
+    $(SRC_DIR)/ngx_auth_webauthn_cose.c
 
 .PHONY: test test-asan clean
 

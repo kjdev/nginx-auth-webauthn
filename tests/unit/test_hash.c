@@ -1,47 +1,10 @@
 /*
  * Copyright (c) Tatsuya Kamijo
  * Copyright (c) Bengo4.com, Inc.
- *
- * Unit test runner for the WebAuthn-specific shared layer
- * (ngx_auth_webauthn_*).  Built against the ngx_compat shim so it links the
- * same sources the module and CLI use, without an nginx runtime.  Plain
- * assert-style checks, no external test framework (cmocka etc.).
  */
 
-#include <ngx_config.h>
-#include <ngx_core.h>
+#include "test.h"
 #include "ngx_auth_webauthn_hash.h"
-
-#include <stdio.h>
-#include <string.h>
-
-static int  tests_run = 0;
-static int  tests_failed = 0;
-
-#define CHECK(cond, label)                                                   \
-    do {                                                                     \
-        tests_run++;                                                         \
-        if (cond) {                                                          \
-            printf("ok   - %s\n", (label));                                  \
-        } else {                                                             \
-            tests_failed++;                                                  \
-            printf("FAIL - %s\n", (label));                                  \
-        }                                                                    \
-    } while (0)
-
-
-static void
-to_hex(const u_char *in, size_t n, char *out)
-{
-    static const char  hex[] = "0123456789abcdef";
-    size_t             i;
-
-    for (i = 0; i < n; i++) {
-        out[i * 2] = hex[in[i] >> 4];
-        out[i * 2 + 1] = hex[in[i] & 0x0f];
-    }
-    out[n * 2] = '\0';
-}
 
 
 /*
@@ -85,8 +48,8 @@ test_sha256_null_out(void)
 }
 
 
-int
-main(void)
+void
+run_hash_tests(void)
 {
     test_sha256_vector("empty", (const u_char *) "", 0,
         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -100,8 +63,4 @@ main(void)
         "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1");
 
     test_sha256_null_out();
-
-    printf("\n%d tests, %d failed\n", tests_run, tests_failed);
-
-    return tests_failed == 0 ? 0 : 1;
 }
