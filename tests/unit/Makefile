@@ -21,8 +21,9 @@ BASE_CFLAGS := -std=c11 -D_GNU_SOURCE $(WARN_FLAGS) \
 CFLAGS      ?= -O2 -g $(BASE_CFLAGS)
 
 # crypto: OpenSSL EVP (SHA-256, COSE->DER).  jansson: pulled in by nxe-json
-# for clientDataJSON parsing.  cbor: COSE_Key decoding.
-LDLIBS      := -lcrypto -ljansson -lcbor
+# for clientDataJSON parsing.  cbor: COSE_Key / attestationObject decoding.
+# hiredis: Redis store (redis / credential tests).
+LDLIBS      := -lcrypto -ljansson -lcbor -lhiredis
 
 SRCS        := \
     test_main.c \
@@ -31,13 +32,19 @@ SRCS        := \
     test_clientdata.c \
     test_cose.c \
     test_assertion.c \
+    test_attestation.c \
+    test_redis.c \
+    test_credential.c \
     $(COMPAT_DIR)/ngx_compat.c \
     $(NXE_JSON_DIR)/nxe_json.c \
     $(SRC_DIR)/ngx_auth_webauthn_hash.c \
     $(SRC_DIR)/ngx_auth_webauthn_authdata.c \
     $(SRC_DIR)/ngx_auth_webauthn_clientdata.c \
     $(SRC_DIR)/ngx_auth_webauthn_cose.c \
-    $(SRC_DIR)/ngx_auth_webauthn_assertion.c
+    $(SRC_DIR)/ngx_auth_webauthn_assertion.c \
+    $(SRC_DIR)/ngx_auth_webauthn_attestation.c \
+    $(SRC_DIR)/ngx_auth_webauthn_redis.c \
+    $(SRC_DIR)/ngx_auth_webauthn_credential.c
 
 .PHONY: test test-asan clean
 

@@ -38,5 +38,8 @@ void run_authdata_tests(void);
 void run_clientdata_tests(void);
 void run_cose_tests(void);
 void run_assertion_tests(void);
+void run_attestation_tests(void);
+void run_redis_tests(void);
+void run_credential_tests(void);
 
 #endif /* NGX_AUTH_WEBAUTHN_TEST_H */

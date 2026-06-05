@@ -32,6 +32,9 @@ main(void)
     run_clientdata_tests();
     run_cose_tests();
     run_assertion_tests();
+    run_attestation_tests();
+    run_redis_tests();
+    run_credential_tests();
 
     printf("\n%d tests, %d failed\n", tests_run, tests_failed);
 
