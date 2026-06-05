@@ -31,6 +31,7 @@ main(void)
     run_authdata_tests();
     run_clientdata_tests();
     run_cose_tests();
+    run_assertion_tests();
 
     printf("\n%d tests, %d failed\n", tests_run, tests_failed);
 

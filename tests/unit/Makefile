@@ -30,12 +30,14 @@ SRCS        := \
     test_authdata.c \
     test_clientdata.c \
     test_cose.c \
+    test_assertion.c \
     $(COMPAT_DIR)/ngx_compat.c \
     $(NXE_JSON_DIR)/nxe_json.c \
     $(SRC_DIR)/ngx_auth_webauthn_hash.c \
     $(SRC_DIR)/ngx_auth_webauthn_authdata.c \
     $(SRC_DIR)/ngx_auth_webauthn_clientdata.c \
-    $(SRC_DIR)/ngx_auth_webauthn_cose.c
+    $(SRC_DIR)/ngx_auth_webauthn_cose.c \
+    $(SRC_DIR)/ngx_auth_webauthn_assertion.c
 
 .PHONY: test test-asan clean
 
