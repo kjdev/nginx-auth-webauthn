@@ -1,0 +1,11 @@
+.git/
+build/
+**/__pycache__/
+*.o
+*.d
+*.so
+objs/
+tools/admin/build/
+tools/admin/auth-webauthn-admin
+**/.venv/
+/tmp/
