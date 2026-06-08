@@ -1613,8 +1613,8 @@ ngx_http_auth_webauthn_access_handler(ngx_http_request_t *r)
 
     cookie_name = wlcf->cookie_name;
     if (r->headers_in.cookie == NULL
-        || ngx_http_parse_multi_header_lines(r, r->headers_in.cookie,
-                                             &cookie_name, &cookie_val) == NULL)
+        || ngx_http_parse_cookie_lines(r, r->headers_in.cookie,
+                                       &cookie_name, &cookie_val) == NULL)
     {
         return ngx_http_auth_webauthn_unauthorized(r, wlcf);
     }
