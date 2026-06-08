@@ -32,6 +32,56 @@ X-WebAuthn-User: alice
 
 
 
+=== gate: webauthn_session is retrievable even when other cookies precede it (200)
+--- http_config
+    auth_webauthn_challenge_zone webauthn:1m;
+--- config
+    include $TEST_NGINX_CONF_DIR/server.conf;
+    auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
+    location = /protected.txt {
+        root html;
+        auth_webauthn on;
+        add_header X-WebAuthn-User $webauthn_user_id always;
+    }
+--- user_files
+>>> protected.txt
+SECRET-OK
+--- more_headers eval
+"Cookie: session=abc.def.ghi; webauthn_session=" . WebAuthn::mint_jwt(sub => "alice")
+--- request
+GET /protected.txt
+--- error_code: 200
+--- response_headers
+X-WebAuthn-User: alice
+--- response_body_like: SECRET-OK
+
+
+
+=== gate: webauthn_session is retrievable even when other cookies follow it (200)
+--- http_config
+    auth_webauthn_challenge_zone webauthn:1m;
+--- config
+    include $TEST_NGINX_CONF_DIR/server.conf;
+    auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
+    location = /protected.txt {
+        root html;
+        auth_webauthn on;
+        add_header X-WebAuthn-User $webauthn_user_id always;
+    }
+--- user_files
+>>> protected.txt
+SECRET-OK
+--- more_headers eval
+"Cookie: webauthn_session=" . WebAuthn::mint_jwt(sub => "alice") . "; session=abc.def.ghi"
+--- request
+GET /protected.txt
+--- error_code: 200
+--- response_headers
+X-WebAuthn-User: alice
+--- response_body_like: SECRET-OK
+
+
+
 === gate: no Cookie is 401
 --- http_config
     auth_webauthn_challenge_zone webauthn:1m;
