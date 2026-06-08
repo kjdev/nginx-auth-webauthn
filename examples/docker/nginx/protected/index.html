@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Protected page</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 32rem;
+           margin: 4rem auto; padding: 0 1rem; }
+    .ok { color: #197b30; }
+    code { background: #f2f2f2; padding: .1rem .3rem; border-radius: .2rem; }
+  </style>
+</head>
+<body>
+  <h1 class="ok">Authentication succeeded</h1>
+  <p>
+    This page is a location protected by <code>auth_webauthn on</code>.
+    You reached it with a valid session JWT cookie.
+  </p>
+  <p>
+    Once the cookie is cleared or expires, the next request is redirected to
+    <a href="/login/">/login/</a> with a 302.
+  </p>
+</body>
+</html>

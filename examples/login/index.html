@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WebAuthn login</title>
+  <!--
+    Endpoints and the post-login redirect target. Adjust to match your
+    nginx.conf (see README.md). Same-origin paths are recommended so the
+    session cookie set by /webauthn/verify is sent on the next navigation.
+  -->
+  <meta name="webauthn-challenge-url" content="/webauthn/challenge">
+  <meta name="webauthn-verify-url" content="/webauthn/verify">
+  <meta name="webauthn-success-url" content="/">
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 28rem;
+           margin: 4rem auto; padding: 0 1rem; }
+    label { display: block; margin-bottom: .5rem; }
+    input { width: 100%; padding: .5rem; box-sizing: border-box; }
+    button { margin-top: 1rem; padding: .6rem 1.2rem; cursor: pointer; }
+    #status { margin-top: 1rem; min-height: 1.4rem; }
+    .ok { color: #197b30; }
+    .err { color: #b00020; }
+  </style>
+</head>
+<body>
+  <h1>WebAuthn login</h1>
+
+  <label for="user-id">User ID (optional, for display)</label>
+  <input id="user-id" type="text" autocomplete="username webauthn"
+         placeholder="e.g. alice">
+
+  <button id="login">Sign in with a passkey</button>
+
+  <p id="status" role="status" aria-live="polite"></p>
+
+  <script src="login.js"></script>
+</body>
+</html>

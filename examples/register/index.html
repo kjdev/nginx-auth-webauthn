@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WebAuthn registration (development)</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 28rem;
+           margin: 4rem auto; padding: 0 1rem; }
+    label { display: block; margin-bottom: .5rem; }
+    input { width: 100%; padding: .5rem; box-sizing: border-box; }
+    button { margin-top: 1rem; padding: .6rem 1.2rem; cursor: pointer; }
+    #status { margin-top: 1rem; min-height: 1.4rem; word-break: break-all; }
+    .ok { color: #197b30; }
+    .err { color: #b00020; }
+    .note { color: #666; font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <h1>WebAuthn registration</h1>
+  <p class="note">For development and learning. Use <code>auth-webauthn-admin</code>
+    for production registration.</p>
+
+  <label for="user-id">User ID</label>
+  <input id="user-id" type="text" autocomplete="username" placeholder="e.g. alice">
+
+  <button id="register">Register a passkey</button>
+
+  <p id="status" role="status" aria-live="polite"></p>
+
+  <script src="register.js"></script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+# End-to-end example stack for nginx-auth-webauthn.
+#
+#   cd examples && docker compose up --build
+#   -> http://localhost:8080/register/  register a passkey
+#   -> http://localhost:8080/login/     log in
+#   -> /                                reach the protected page
+#
+# The nginx image is built from the repository root (context: ..) because it
+# needs the module sources, submodules and the bundled CLI; the register image
+# is built from this directory.
+
+services:
+  redis:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+
+  # Development registration server (Flask + python-fido2): the backend for the
+  # browser registration UI.
+  register:
+    build:
+      context: .
+      dockerfile: ./docker/register/Dockerfile
+    environment:
+      WEBAUTHN_RP_ID: localhost
+      # Browser-facing origin that calls navigator.credentials.create(). Must
+      # match the host-mapped port (8080) nginx is reached on.
+      WEBAUTHN_ORIGIN: http://localhost:8080
+      WEBAUTHN_KEY_PREFIX: "webauthn:"
+      REDIS_URL: redis://redis:6379/0
+      # Fixed so the Flask session survives restarts (dev-only constant).
+      FLASK_SECRET_KEY: dev-only-change-me
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # nginx with the module bundled in; the single front that aggregates every
+  # endpoint.
+  nginx:
+    build:
+      context: ..
+      dockerfile: ./Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - redis
+      - register
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./docker/nginx/jwt.key:/etc/nginx/webauthn/jwt.key
+      - ./login:/usr/share/nginx/html/login
+      - ./register/index.html:/usr/share/nginx/html/register/index.html
+      - ./register/register.js:/usr/share/nginx/html/register/register.js
+      - ./docker/nginx/protected:/usr/share/nginx/html/protected
+    restart: unless-stopped
