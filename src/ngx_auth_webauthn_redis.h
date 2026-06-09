@@ -30,7 +30,7 @@ typedef struct {
 } ngx_auth_webauthn_redis_conf_t;
 
 /* Opaque handle (wraps redisContext). */
-typedef struct ngx_auth_webauthn_redis_s  ngx_auth_webauthn_redis_t;
+typedef struct ngx_auth_webauthn_redis_s ngx_auth_webauthn_redis_t;
 
 /* One HGETALL / SMEMBERS field-value element, copied into the caller's pool. */
 typedef struct {

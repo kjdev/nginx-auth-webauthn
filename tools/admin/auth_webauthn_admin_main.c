@@ -18,7 +18,7 @@
 #define AUTH_WEBAUTHN_ADMIN_FILE_MAX  (16 * 1024 * 1024)
 #define AUTH_WEBAUTHN_ADMIN_READ_CHUNK  65536
 
-static const ngx_str_t  ngx_auth_webauthn_admin_default_prefix =
+static const ngx_str_t ngx_auth_webauthn_admin_default_prefix =
     ngx_string("webauthn:");
 
 
@@ -26,27 +26,27 @@ static void
 ngx_auth_webauthn_admin_usage(FILE *out)
 {
     fprintf(out,
-        "usage: auth-webauthn-admin <command> [options]\n"
-        "\n"
-        "commands:\n"
-        "  register   register a credential from an AttestationResponse JSON\n"
-        "  revoke     delete a credential by id\n"
-        "  list       list a user's credentials\n"
-        "  show       show one credential in detail\n"
-        "\n"
-        "common options (all commands):\n"
-        "  --redis=<host:port>          Redis server (required)\n"
-        "  --redis-password=<s|file:p>  Redis AUTH (literal or file:<path>)\n"
-        "  --redis-db=<int>             Redis DB number (default 0)\n"
-        "  --redis-timeout=<ms>         connect/command timeout (default %d)\n"
-        "  --key-prefix=<string>        Redis key prefix (default \"%.*s\")\n"
-        "\n"
-        "  -h, --help                   show help; --version prints version\n"
-        "\n"
-        "run 'auth-webauthn-admin <command> --help' for per-command options\n",
-        AUTH_WEBAUTHN_ADMIN_TIMEOUT_MS,
-        (int) ngx_auth_webauthn_admin_default_prefix.len,
-        ngx_auth_webauthn_admin_default_prefix.data);
+            "usage: auth-webauthn-admin <command> [options]\n"
+            "\n"
+            "commands:\n"
+            "  register   register a credential from an AttestationResponse JSON\n"
+            "  revoke     delete a credential by id\n"
+            "  list       list a user's credentials\n"
+            "  show       show one credential in detail\n"
+            "\n"
+            "common options (all commands):\n"
+            "  --redis=<host:port>          Redis server (required)\n"
+            "  --redis-password=<s|file:p>  Redis AUTH (literal or file:<path>)\n"
+            "  --redis-db=<int>             Redis DB number (default 0)\n"
+            "  --redis-timeout=<ms>         connect/command timeout (default %d)\n"
+            "  --key-prefix=<string>        Redis key prefix (default \"%.*s\")\n"
+            "\n"
+            "  -h, --help                   show help; --version prints version\n"
+            "\n"
+            "run 'auth-webauthn-admin <command> --help' for per-command options\n",
+            AUTH_WEBAUTHN_ADMIN_TIMEOUT_MS,
+            (int) ngx_auth_webauthn_admin_default_prefix.len,
+            ngx_auth_webauthn_admin_default_prefix.data);
 }
 
 
@@ -69,8 +69,8 @@ auth_webauthn_admin_alg_name(int alg)
 const char *
 auth_webauthn_admin_fmt_time(int64_t t, char *buf, size_t size)
 {
-    time_t     tt;
-    struct tm  tm;
+    time_t tt;
+    struct tm tm;
 
     if (t <= 0) {
         snprintf(buf, size, "-");
@@ -92,12 +92,12 @@ ngx_int_t
 auth_webauthn_admin_read_file(ngx_pool_t *pool, const char *path,
     ngx_str_t *out)
 {
-    FILE    *fp;
-    u_char  *buf;
-    u_char  *nbuf;
-    size_t   cap;
-    size_t   len;
-    size_t   n;
+    FILE *fp;
+    u_char *buf;
+    u_char *nbuf;
+    size_t cap;
+    size_t len;
+    size_t n;
 
     if (pool == NULL || path == NULL || out == NULL) {
         return NGX_ERROR;
@@ -124,7 +124,7 @@ auth_webauthn_admin_read_file(ngx_pool_t *pool, const char *path,
         if (len == cap) {
             if (cap >= AUTH_WEBAUTHN_ADMIN_FILE_MAX) {
                 fprintf(stderr, "error: input exceeds %d bytes\n",
-                    AUTH_WEBAUTHN_ADMIN_FILE_MAX);
+                        AUTH_WEBAUTHN_ADMIN_FILE_MAX);
                 goto failed;
             }
             cap *= 2;
@@ -193,10 +193,10 @@ ngx_int_t
 auth_webauthn_admin_parse_common_opt(auth_webauthn_admin_ctx_t *ctx, int opt,
     const char *arg)
 {
-    ngx_str_t   file;
+    ngx_str_t file;
     const char *colon;
-    char       *end;
-    long        v;
+    char *end;
+    long v;
 
     switch (opt) {
 
@@ -266,7 +266,7 @@ ngx_int_t
 auth_webauthn_admin_connect(auth_webauthn_admin_ctx_t *ctx,
     ngx_auth_webauthn_redis_t **out)
 {
-    ngx_auth_webauthn_redis_conf_t  conf;
+    ngx_auth_webauthn_redis_conf_t conf;
 
     if (ctx->redis_host.len == 0 || ctx->redis_port == 0) {
         fprintf(stderr, "error: --redis=<host:port> is required\n");
@@ -284,7 +284,8 @@ auth_webauthn_admin_connect(auth_webauthn_admin_ctx_t *ctx,
         != NGX_OK)
     {
         fprintf(stderr, "error: cannot connect to Redis %.*s:%d\n",
-            (int) ctx->redis_host.len, ctx->redis_host.data, ctx->redis_port);
+                (int) ctx->redis_host.len, ctx->redis_host.data,
+                ctx->redis_port);
         return NGX_ERROR;
     }
 
@@ -295,11 +296,11 @@ auth_webauthn_admin_connect(auth_webauthn_admin_ctx_t *ctx,
 int
 main(int argc, char **argv)
 {
-    int                        rc;
-    const char                *cmd;
-    ngx_log_t                  log;
-    ngx_pool_t                *pool;
-    auth_webauthn_admin_ctx_t  ctx;
+    int rc;
+    const char *cmd;
+    ngx_log_t log;
+    ngx_pool_t *pool;
+    auth_webauthn_admin_ctx_t ctx;
 
     if (argc < 2) {
         ngx_auth_webauthn_admin_usage(stderr);

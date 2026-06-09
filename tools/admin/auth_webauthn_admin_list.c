@@ -21,11 +21,11 @@ static void
 ngx_auth_webauthn_admin_list_usage(FILE *out)
 {
     fprintf(out,
-        "usage: auth-webauthn-admin list --user-id=<id> [options]\n"
-        "\n"
-        "options:\n"
-        "  --user-id=<id>            user whose credentials to list (required)\n"
-        "  --redis=<host:port> ...   see 'auth-webauthn-admin --help'\n");
+            "usage: auth-webauthn-admin list --user-id=<id> [options]\n"
+            "\n"
+            "options:\n"
+            "  --user-id=<id>            user whose credentials to list (required)\n"
+            "  --redis=<host:port> ...   see 'auth-webauthn-admin --help'\n");
 }
 
 
@@ -34,11 +34,11 @@ static ngx_int_t
 ngx_auth_webauthn_admin_index_key(ngx_pool_t *pool, ngx_str_t *prefix,
     ngx_str_t *uid, ngx_str_t *out)
 {
-    static const char  mid[] = "user:";
-    static const char  suffix[] = ":creds";
-    size_t             midlen = sizeof(mid) - 1;
-    size_t             suffixlen = sizeof(suffix) - 1;
-    u_char            *p;
+    static const char mid[] = "user:";
+    static const char suffix[] = ":creds";
+    size_t midlen = sizeof(mid) - 1;
+    size_t suffixlen = sizeof(suffix) - 1;
+    u_char *p;
 
     out->len = prefix->len + midlen + uid->len + suffixlen;
     p = ngx_pnalloc(pool, out->len);
@@ -63,18 +63,18 @@ int
 auth_webauthn_admin_cmd_list(auth_webauthn_admin_ctx_t *ctx, int argc,
     char **argv)
 {
-    int                              c;
-    ngx_str_t                        uid;
-    ngx_str_t                        index_key;
-    ngx_str_t                       *members;
-    ngx_uint_t                       nmembers;
-    ngx_uint_t                       i;
-    char                             tbuf[24];
-    const char                      *user_id = NULL;
-    ngx_auth_webauthn_redis_t       *redis;
-    ngx_auth_webauthn_credential_t   cred;
+    int c;
+    ngx_str_t uid;
+    ngx_str_t index_key;
+    ngx_str_t *members;
+    ngx_uint_t nmembers;
+    ngx_uint_t i;
+    char tbuf[24];
+    const char *user_id = NULL;
+    ngx_auth_webauthn_redis_t *redis;
+    ngx_auth_webauthn_credential_t cred;
 
-    static const struct option  longopts[] = {
+    static const struct option longopts[] = {
         { "user-id",        required_argument, NULL, OPT_USER_ID },
         { "redis",          required_argument, NULL,
           AUTH_WEBAUTHN_ADMIN_OPT_REDIS },
@@ -122,7 +122,7 @@ auth_webauthn_admin_cmd_list(auth_webauthn_admin_ctx_t *ctx, int argc,
     uid.len = ngx_strlen(user_id);
 
     if (ngx_auth_webauthn_admin_index_key(ctx->pool, &ctx->key_prefix, &uid,
-            &index_key) != NGX_OK)
+                                          &index_key) != NGX_OK)
     {
         return AUTH_WEBAUTHN_ADMIN_EX_FAIL;
     }
@@ -132,7 +132,7 @@ auth_webauthn_admin_cmd_list(auth_webauthn_admin_ctx_t *ctx, int argc,
     }
 
     if (ngx_auth_webauthn_redis_smembers(redis, ctx->pool, &index_key,
-            &members, &nmembers) != NGX_OK)
+                                         &members, &nmembers) != NGX_OK)
     {
         fprintf(stderr, "error: failed to read credential index\n");
         ngx_auth_webauthn_redis_close(redis);
@@ -140,24 +140,26 @@ auth_webauthn_admin_cmd_list(auth_webauthn_admin_ctx_t *ctx, int argc,
     }
 
     printf("%-43s %-6s %-11s %s\n",
-        "CREDENTIAL_ID", "ALG", "SIGN_COUNT", "CREATED_AT");
+           "CREDENTIAL_ID", "ALG", "SIGN_COUNT", "CREATED_AT");
 
     for (i = 0; i < nmembers; i++) {
-        ngx_int_t  rc;
+        ngx_int_t rc;
 
         rc = ngx_auth_webauthn_credential_get(redis, ctx->pool,
-            &ctx->key_prefix, &members[i], &cred);
+                                              &ctx->key_prefix, &members[i],
+                                              &cred);
         if (rc == NGX_OK) {
             printf("%-43.*s %-6s %-11lu %s\n",
-                (int) members[i].len, members[i].data,
-                auth_webauthn_admin_alg_name(cred.alg),
-                (unsigned long) cred.sign_count,
-                auth_webauthn_admin_fmt_time(cred.created_at, tbuf,
-                    sizeof(tbuf)));
+                   (int) members[i].len, members[i].data,
+                   auth_webauthn_admin_alg_name(cred.alg),
+                   (unsigned long) cred.sign_count,
+                   auth_webauthn_admin_fmt_time(cred.created_at, tbuf,
+                                                sizeof(tbuf)));
         } else {
             /* Index points at a credential whose record is gone/unreadable. */
             printf("%-43.*s %-6s %-11s %s\n",
-                (int) members[i].len, members[i].data, "?", "?", "(missing)");
+                   (int) members[i].len, members[i].data, "?", "?",
+                   "(missing)");
         }
     }
 

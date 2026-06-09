@@ -12,8 +12,8 @@ ngx_int_t
 ngx_auth_webauthn_authdata_parse(const u_char *data, size_t len,
     ngx_auth_webauthn_authdata_t *out)
 {
-    size_t        offset;
-    size_t        cred_id_len;
+    size_t offset;
+    size_t cred_id_len;
     const u_char *p;
 
     if (out == NULL) {
@@ -35,9 +35,9 @@ ngx_auth_webauthn_authdata_parse(const u_char *data, size_t len,
 
     /* signCount: 4-byte big-endian uint32 */
     out->sign_count = ((uint32_t) p[0] << 24)
-                    | ((uint32_t) p[1] << 16)
-                    | ((uint32_t) p[2] << 8)
-                    | ((uint32_t) p[3]);
+                      | ((uint32_t) p[1] << 16)
+                      | ((uint32_t) p[2] << 8)
+                      | ((uint32_t) p[3]);
 
     if ((out->flags & NGX_AUTH_WEBAUTHN_AUTHDATA_FLAG_AT) == 0) {
         /* assertion form: nothing follows the fixed prefix */

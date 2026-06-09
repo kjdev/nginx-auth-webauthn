@@ -28,9 +28,9 @@
 
 
 typedef struct {
-    u_char     rp_id_hash[NGX_AUTH_WEBAUTHN_SHA256_LEN];
-    u_char     flags;
-    uint32_t   sign_count;
+    u_char    rp_id_hash[NGX_AUTH_WEBAUTHN_SHA256_LEN];
+    u_char    flags;
+    uint32_t  sign_count;
 
     /*
      * Only populated when the AT flag is set.  credential_id and

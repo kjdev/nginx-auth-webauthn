@@ -35,18 +35,18 @@ static void
 ngx_auth_webauthn_admin_register_usage(FILE *out)
 {
     fprintf(out,
-        "usage: auth-webauthn-admin register [options]\n"
-        "\n"
-        "options:\n"
-        "  --user-id=<id>                 application user id (required)\n"
-        "  --response-file=<path>         AttestationResponse JSON; '-' reads\n"
-        "                                 stdin (required)\n"
-        "  --rp-id=<domain>               expected RP ID (required)\n"
-        "  --require-attestation=none|packed\n"
-        "                                 attestation level (default none)\n"
-        "  --origin=<url>                 accepted but not verified here\n"
-        "  --transports=<csv>             override transports (usb,nfc,...)\n"
-        "  --redis=<host:port> ...        see 'auth-webauthn-admin --help'\n");
+            "usage: auth-webauthn-admin register [options]\n"
+            "\n"
+            "options:\n"
+            "  --user-id=<id>                 application user id (required)\n"
+            "  --response-file=<path>         AttestationResponse JSON; '-' reads\n"
+            "                                 stdin (required)\n"
+            "  --rp-id=<domain>               expected RP ID (required)\n"
+            "  --require-attestation=none|packed\n"
+            "                                 attestation level (default none)\n"
+            "  --origin=<url>                 accepted but not verified here\n"
+            "  --transports=<csv>             override transports (usb,nfc,...)\n"
+            "  --redis=<host:port> ...        see 'auth-webauthn-admin --help'\n");
 }
 
 
@@ -55,8 +55,8 @@ static ngx_int_t
 ngx_auth_webauthn_admin_decode_member(ngx_pool_t *pool, nxe_json_t *obj,
     const char *key, ngx_str_t *out)
 {
-    ngx_str_t    enc;
-    nxe_json_t  *node;
+    ngx_str_t enc;
+    nxe_json_t *node;
 
     node = nxe_json_object_get(obj, key);
     if (node == NULL || nxe_json_string(node, &enc) != NGX_OK) {
@@ -82,31 +82,31 @@ int
 auth_webauthn_admin_cmd_register(auth_webauthn_admin_ctx_t *ctx, int argc,
     char **argv)
 {
-    int                              c;
-    int                              alg;
-    int                              rc;
-    ngx_uint_t                       require;
-    ngx_str_t                        body;
-    ngx_str_t                        client_data;
-    ngx_str_t                        att_obj;
-    ngx_str_t                        rp_id;
-    ngx_str_t                        cdh_str;
-    ngx_str_t                        cid_enc;
-    ngx_str_t                        der;
-    nxe_json_t                      *json;
-    nxe_json_t                      *response;
-    u_char                           cdh[NGX_AUTH_WEBAUTHN_SHA256_LEN];
-    const char                      *user_id = NULL;
-    const char                      *response_file = NULL;
-    const char                      *rp_id_arg = NULL;
-    const char                      *require_arg = NULL;
-    const char                      *transports = NULL;
-    ngx_auth_webauthn_attestation_t  att;
-    ngx_auth_webauthn_authdata_t     ad;
-    ngx_auth_webauthn_redis_t       *redis;
-    ngx_auth_webauthn_credential_t   cred;
+    int c;
+    int alg;
+    int rc;
+    ngx_uint_t require;
+    ngx_str_t body;
+    ngx_str_t client_data;
+    ngx_str_t att_obj;
+    ngx_str_t rp_id;
+    ngx_str_t cdh_str;
+    ngx_str_t cid_enc;
+    ngx_str_t der;
+    nxe_json_t *json;
+    nxe_json_t *response;
+    u_char cdh[NGX_AUTH_WEBAUTHN_SHA256_LEN];
+    const char *user_id = NULL;
+    const char *response_file = NULL;
+    const char *rp_id_arg = NULL;
+    const char *require_arg = NULL;
+    const char *transports = NULL;
+    ngx_auth_webauthn_attestation_t att;
+    ngx_auth_webauthn_authdata_t ad;
+    ngx_auth_webauthn_redis_t *redis;
+    ngx_auth_webauthn_credential_t cred;
 
-    static const struct option  longopts[] = {
+    static const struct option longopts[] = {
         { "user-id",             required_argument, NULL, OPT_USER_ID },
         { "response-file",       required_argument, NULL, OPT_RESPONSE_FILE },
         { "rp-id",               required_argument, NULL, OPT_RP_ID },
@@ -134,7 +134,7 @@ auth_webauthn_admin_cmd_register(auth_webauthn_admin_ctx_t *ctx, int argc,
         case OPT_RESPONSE_FILE:       response_file = optarg; break;
         case OPT_RP_ID:               rp_id_arg = optarg; break;
         case OPT_REQUIRE_ATTESTATION: require_arg = optarg; break;
-        case OPT_ORIGIN:              /* accepted, not verified here */ break;
+        case OPT_ORIGIN: /* accepted, not verified here */ break;
         case OPT_TRANSPORTS:          transports = optarg; break;
 
         case 'h':
@@ -156,7 +156,7 @@ auth_webauthn_admin_cmd_register(auth_webauthn_admin_ctx_t *ctx, int argc,
 
     if (user_id == NULL || response_file == NULL || rp_id_arg == NULL) {
         fprintf(stderr,
-            "error: --user-id, --response-file and --rp-id are required\n");
+                "error: --user-id, --response-file and --rp-id are required\n");
         return AUTH_WEBAUTHN_ADMIN_EX_USAGE;
     }
 
@@ -166,7 +166,7 @@ auth_webauthn_admin_cmd_register(auth_webauthn_admin_ctx_t *ctx, int argc,
             require = NGX_AUTH_WEBAUTHN_ATT_PACKED;
         } else if (strcmp(require_arg, "none") != 0) {
             fprintf(stderr,
-                "error: --require-attestation expects none|packed\n");
+                    "error: --require-attestation expects none|packed\n");
             return AUTH_WEBAUTHN_ADMIN_EX_USAGE;
         }
     }
@@ -192,16 +192,18 @@ auth_webauthn_admin_cmd_register(auth_webauthn_admin_ctx_t *ctx, int argc,
     }
 
     if (ngx_auth_webauthn_admin_decode_member(ctx->pool, response,
-            "clientDataJSON", &client_data) != NGX_OK
+                                              "clientDataJSON",
+                                              &client_data) != NGX_OK
         || ngx_auth_webauthn_admin_decode_member(ctx->pool, response,
-            "attestationObject", &att_obj) != NGX_OK)
+                                                 "attestationObject",
+                                                 &att_obj) != NGX_OK)
     {
         nxe_json_free(json);
         return AUTH_WEBAUTHN_ADMIN_EX_FAIL;
     }
 
     if (ngx_auth_webauthn_attestation_parse(ctx->pool, att_obj.data,
-            att_obj.len, &att) != NGX_OK)
+                                            att_obj.len, &att) != NGX_OK)
     {
         fprintf(stderr, "error: cannot parse attestationObject\n");
         nxe_json_free(json);
@@ -209,7 +211,7 @@ auth_webauthn_admin_cmd_register(auth_webauthn_admin_ctx_t *ctx, int argc,
     }
 
     if (ngx_auth_webauthn_authdata_parse(att.auth_data.data, att.auth_data.len,
-            &ad) != NGX_OK)
+                                         &ad) != NGX_OK)
     {
         fprintf(stderr, "error: cannot parse authenticatorData\n");
         nxe_json_free(json);
@@ -220,7 +222,7 @@ auth_webauthn_admin_cmd_register(auth_webauthn_admin_ctx_t *ctx, int argc,
         || ad.credential_id.len == 0 || ad.cose_public_key.len == 0)
     {
         fprintf(stderr,
-            "error: authenticatorData carries no attested credential\n");
+                "error: authenticatorData carries no attested credential\n");
         nxe_json_free(json);
         return AUTH_WEBAUTHN_ADMIN_EX_FAIL;
     }
@@ -239,18 +241,19 @@ auth_webauthn_admin_cmd_register(auth_webauthn_admin_ctx_t *ctx, int argc,
     cdh_str.len = sizeof(cdh);
 
     rc = ngx_auth_webauthn_attestation_verify(ctx->pool, &att, &rp_id,
-        &cdh_str, require);
+                                              &cdh_str, require);
     if (rc != NGX_OK) {
         fprintf(stderr, "error: attestation verification failed "
-            "(fmt=%.*s, require=%s)\n",
-            (int) att.fmt.len, att.fmt.data,
-            require == NGX_AUTH_WEBAUTHN_ATT_PACKED ? "packed" : "none");
+                "(fmt=%.*s, require=%s)\n",
+                (int) att.fmt.len, att.fmt.data,
+                require == NGX_AUTH_WEBAUTHN_ATT_PACKED ? "packed" : "none");
         nxe_json_free(json);
         return AUTH_WEBAUTHN_ADMIN_EX_FAIL;
     }
 
     if (ngx_auth_webauthn_cose_to_der(ctx->pool, ad.cose_public_key.data,
-            ad.cose_public_key.len, &der, &alg) != NGX_OK)
+                                      ad.cose_public_key.len, &der,
+                                      &alg) != NGX_OK)
     {
         fprintf(stderr, "error: unsupported or malformed COSE public key\n");
         nxe_json_free(json);
@@ -259,7 +262,7 @@ auth_webauthn_admin_cmd_register(auth_webauthn_admin_ctx_t *ctx, int argc,
 
     /* Encode the raw credential id to base64url for use as the Redis key. */
     cid_enc.data = ngx_palloc(ctx->pool,
-        ngx_base64_encoded_length(ad.credential_id.len));
+                              ngx_base64_encoded_length(ad.credential_id.len));
     if (cid_enc.data == NULL) {
         nxe_json_free(json);
         return AUTH_WEBAUTHN_ADMIN_EX_FAIL;
@@ -288,7 +291,7 @@ auth_webauthn_admin_cmd_register(auth_webauthn_admin_ctx_t *ctx, int argc,
     }
 
     rc = ngx_auth_webauthn_credential_put(redis, ctx->pool, &ctx->key_prefix,
-        &cred);
+                                          &cred);
 
     ngx_auth_webauthn_redis_close(redis);
     nxe_json_free(json);
@@ -299,11 +302,11 @@ auth_webauthn_admin_cmd_register(auth_webauthn_admin_ctx_t *ctx, int argc,
     }
 
     printf("registered: cid=%.*s%s alg=%s\n",
-        (int) (cid_enc.len < AUTH_WEBAUTHN_ADMIN_CID_ECHO
+           (int) (cid_enc.len < AUTH_WEBAUTHN_ADMIN_CID_ECHO
                ? cid_enc.len : AUTH_WEBAUTHN_ADMIN_CID_ECHO),
-        cid_enc.data,
-        cid_enc.len > AUTH_WEBAUTHN_ADMIN_CID_ECHO ? "..." : "",
-        auth_webauthn_admin_alg_name(alg));
+           cid_enc.data,
+           cid_enc.len > AUTH_WEBAUTHN_ADMIN_CID_ECHO ? "..." : "",
+           auth_webauthn_admin_alg_name(alg));
 
     return AUTH_WEBAUTHN_ADMIN_EX_OK;
 }

@@ -38,38 +38,38 @@ typedef struct {
 
 
 typedef struct {
-    ngx_str_t       rp_id;
-    ngx_str_t       rp_name;
-    ngx_array_t    *origins;           /* ngx_str_t */
-    time_t          challenge_ttl;     /* seconds */
+    ngx_str_t    rp_id;
+    ngx_str_t    rp_name;
+    ngx_array_t *origins;              /* ngx_str_t */
+    time_t       challenge_ttl;        /* seconds */
 
-    ngx_str_t       redis_url;         /* "<host>:<port>", for messages */
-    ngx_str_t       redis_host;
-    ngx_int_t       redis_port;
-    ngx_str_t       redis_password;
-    ngx_uint_t      redis_db;
-    ngx_msec_t      redis_timeout;
-    ngx_str_t       redis_key_prefix;
+    ngx_str_t    redis_url;            /* "<host>:<port>", for messages */
+    ngx_str_t    redis_host;
+    ngx_int_t    redis_port;
+    ngx_str_t    redis_password;
+    ngx_uint_t   redis_db;
+    ngx_msec_t   redis_timeout;
+    ngx_str_t    redis_key_prefix;
 
-    ngx_str_t       jwt_secret_file;
-    ngx_str_t       jwt_secret;        /* HMAC secret, or PEM private key */
-    ngx_str_t       jwt_pub_pem;       /* derived public PEM (asym verify) */
-    ngx_str_t       jwt_alg;           /* "HS256" / "RS256" / "ES256" */
-    ngx_uint_t      jwt_alg_family;
-    time_t          jwt_ttl;           /* seconds */
-    ngx_str_t       cookie_name;
-    ngx_str_t       cookie_domain;
-    ngx_str_t       cookie_path;
-    ngx_flag_t      cookie_secure;
-    ngx_uint_t      cookie_samesite;   /* index into samesite names */
+    ngx_str_t    jwt_secret_file;
+    ngx_str_t    jwt_secret;           /* HMAC secret, or PEM private key */
+    ngx_str_t    jwt_pub_pem;          /* derived public PEM (asym verify) */
+    ngx_str_t    jwt_alg;              /* "HS256" / "RS256" / "ES256" */
+    ngx_uint_t   jwt_alg_family;
+    time_t       jwt_ttl;              /* seconds */
+    ngx_str_t    cookie_name;
+    ngx_str_t    cookie_domain;
+    ngx_str_t    cookie_path;
+    ngx_flag_t   cookie_secure;
+    ngx_uint_t   cookie_samesite;      /* index into samesite names */
 
-    ngx_uint_t      clone_detection;   /* NGX_AUTH_WEBAUTHN_CLONE_* */
+    ngx_uint_t   clone_detection;      /* NGX_AUTH_WEBAUTHN_CLONE_* */
 
-    ngx_flag_t      auth;
-    ngx_str_t       signin_url;
-    ngx_array_t    *set_headers;       /* ngx_http_auth_webauthn_header_t */
-    ngx_flag_t      challenge_handler;
-    ngx_flag_t      verify_handler;
+    ngx_flag_t   auth;
+    ngx_str_t    signin_url;
+    ngx_array_t *set_headers;          /* ngx_http_auth_webauthn_header_t */
+    ngx_flag_t   challenge_handler;
+    ngx_flag_t   verify_handler;
 } ngx_http_auth_webauthn_loc_conf_t;
 
 

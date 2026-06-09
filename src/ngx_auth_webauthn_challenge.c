@@ -17,9 +17,9 @@ static ngx_int_t
 ngx_auth_webauthn_challenge_key(ngx_pool_t *pool, ngx_str_t *prefix,
     const u_char *raw, size_t rawlen, ngx_str_t *out)
 {
-    static const char  mid[] = "chal:";
-    size_t             midlen = sizeof(mid) - 1;
-    u_char            *p;
+    static const char mid[] = "chal:";
+    size_t midlen = sizeof(mid) - 1;
+    u_char *p;
 
     out->len = prefix->len + midlen + rawlen;
     p = ngx_pnalloc(pool, out->len);
@@ -40,8 +40,8 @@ ngx_int_t
 ngx_auth_webauthn_challenge_issue(ngx_auth_webauthn_redis_t *redis,
     ngx_pool_t *pool, ngx_str_t *key_prefix, time_t ttl, u_char *out)
 {
-    u_char     challenge[NGX_AUTH_WEBAUTHN_CHALLENGE_LEN];
-    ngx_str_t  key, value;
+    u_char challenge[NGX_AUTH_WEBAUTHN_CHALLENGE_LEN];
+    ngx_str_t key, value;
 
     if (redis == NULL || pool == NULL || key_prefix == NULL || out == NULL
         || ttl <= 0)
@@ -82,8 +82,8 @@ ngx_auth_webauthn_challenge_consume(ngx_auth_webauthn_redis_t *redis,
     ngx_pool_t *pool, ngx_str_t *key_prefix, const u_char *challenge,
     size_t len)
 {
-    ngx_str_t   key;
-    ngx_uint_t  found;
+    ngx_str_t key;
+    ngx_uint_t found;
 
     if (redis == NULL || pool == NULL || key_prefix == NULL
         || challenge == NULL)

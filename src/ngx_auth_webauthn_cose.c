@@ -29,7 +29,8 @@
 
 /* Uncompressed EC point: 0x04 || X || Y, with 32-byte P-256 coordinates */
 #define NGX_AUTH_WEBAUTHN_P256_COORD_LEN   32
-#define NGX_AUTH_WEBAUTHN_P256_POINT_LEN   (1 + 2 * NGX_AUTH_WEBAUTHN_P256_COORD_LEN)
+#define NGX_AUTH_WEBAUTHN_P256_POINT_LEN   (1 + 2 * \
+                                            NGX_AUTH_WEBAUTHN_P256_COORD_LEN)
 #define NGX_AUTH_WEBAUTHN_ED25519_KEY_LEN  32
 
 
@@ -76,16 +77,16 @@ static ngx_int_t
 ngx_auth_webauthn_cose_ec2_pkey(cbor_item_t *crv, cbor_item_t *x_item,
     cbor_item_t *y_item, EVP_PKEY **pkey)
 {
-    u_char           point[NGX_AUTH_WEBAUTHN_P256_POINT_LEN];
-    u_char          *x;
-    u_char          *y;
-    size_t           x_len;
-    size_t           y_len;
-    int64_t          crv_id;
-    ngx_int_t        rc;
-    EVP_PKEY_CTX    *ctx = NULL;
-    OSSL_PARAM_BLD  *bld = NULL;
-    OSSL_PARAM      *params = NULL;
+    u_char point[NGX_AUTH_WEBAUTHN_P256_POINT_LEN];
+    u_char *x;
+    u_char *y;
+    size_t x_len;
+    size_t y_len;
+    int64_t crv_id;
+    ngx_int_t rc;
+    EVP_PKEY_CTX *ctx = NULL;
+    OSSL_PARAM_BLD *bld = NULL;
+    OSSL_PARAM *params = NULL;
 
     if (ngx_auth_webauthn_cose_int(crv, &crv_id) != NGX_OK
         || crv_id != NGX_AUTH_WEBAUTHN_COSE_CRV_P256)
@@ -104,7 +105,7 @@ ngx_auth_webauthn_cose_ec2_pkey(cbor_item_t *crv, cbor_item_t *x_item,
     point[0] = 0x04;
     ngx_memcpy(point + 1, x, NGX_AUTH_WEBAUTHN_P256_COORD_LEN);
     ngx_memcpy(point + 1 + NGX_AUTH_WEBAUTHN_P256_COORD_LEN, y,
-        NGX_AUTH_WEBAUTHN_P256_COORD_LEN);
+               NGX_AUTH_WEBAUTHN_P256_COORD_LEN);
 
     rc = NGX_ERROR;
 
@@ -114,9 +115,9 @@ ngx_auth_webauthn_cose_ec2_pkey(cbor_item_t *crv, cbor_item_t *x_item,
     }
 
     if (OSSL_PARAM_BLD_push_utf8_string(bld, OSSL_PKEY_PARAM_GROUP_NAME,
-            "prime256v1", 0) != 1
+                                        "prime256v1", 0) != 1
         || OSSL_PARAM_BLD_push_octet_string(bld, OSSL_PKEY_PARAM_PUB_KEY,
-            point, sizeof(point)) != 1)
+                                            point, sizeof(point)) != 1)
     {
         goto done;
     }
@@ -147,9 +148,9 @@ static ngx_int_t
 ngx_auth_webauthn_cose_okp_pkey(cbor_item_t *crv, cbor_item_t *x_item,
     EVP_PKEY **pkey)
 {
-    u_char   *x;
-    size_t    x_len;
-    int64_t   crv_id;
+    u_char *x;
+    size_t x_len;
+    int64_t crv_id;
 
     if (ngx_auth_webauthn_cose_int(crv, &crv_id) != NGX_OK
         || crv_id != NGX_AUTH_WEBAUTHN_COSE_CRV_ED25519)
@@ -176,16 +177,16 @@ static ngx_int_t
 ngx_auth_webauthn_cose_rsa_pkey(cbor_item_t *n_item, cbor_item_t *e_item,
     EVP_PKEY **pkey)
 {
-    u_char          *n;
-    u_char          *e;
-    size_t           n_len;
-    size_t           e_len;
-    ngx_int_t        rc;
-    BIGNUM          *bn_n = NULL;
-    BIGNUM          *bn_e = NULL;
-    EVP_PKEY_CTX    *ctx = NULL;
-    OSSL_PARAM_BLD  *bld = NULL;
-    OSSL_PARAM      *params = NULL;
+    u_char *n;
+    u_char *e;
+    size_t n_len;
+    size_t e_len;
+    ngx_int_t rc;
+    BIGNUM *bn_n = NULL;
+    BIGNUM *bn_e = NULL;
+    EVP_PKEY_CTX *ctx = NULL;
+    OSSL_PARAM_BLD *bld = NULL;
+    OSSL_PARAM *params = NULL;
 
     if (ngx_auth_webauthn_cose_bytes(n_item, &n, &n_len) != NGX_OK
         || ngx_auth_webauthn_cose_bytes(e_item, &e, &e_len) != NGX_OK)
@@ -236,20 +237,20 @@ ngx_int_t
 ngx_auth_webauthn_cose_to_pkey(const u_char *cose, size_t cose_len,
     EVP_PKEY **pkey, int *alg)
 {
-    size_t               i;
-    size_t               map_size;
-    int64_t              key;
-    int64_t              kty;
-    int64_t              alg_id;
-    ngx_int_t            rc;
-    cbor_item_t         *root = NULL;
-    cbor_item_t         *v_kty = NULL;
-    cbor_item_t         *v_alg = NULL;
-    cbor_item_t         *v_m1 = NULL;   /* label -1: crv | rsa n   */
-    cbor_item_t         *v_m2 = NULL;   /* label -2: x   | rsa e   */
-    cbor_item_t         *v_m3 = NULL;   /* label -3: y             */
-    struct cbor_pair    *pairs;
-    struct cbor_load_result  result;
+    size_t i;
+    size_t map_size;
+    int64_t key;
+    int64_t kty;
+    int64_t alg_id;
+    ngx_int_t rc;
+    cbor_item_t *root = NULL;
+    cbor_item_t *v_kty = NULL;
+    cbor_item_t *v_alg = NULL;
+    cbor_item_t *v_m1 = NULL;           /* label -1: crv | rsa n   */
+    cbor_item_t *v_m2 = NULL;           /* label -2: x   | rsa e   */
+    cbor_item_t *v_m3 = NULL;           /* label -3: y             */
+    struct cbor_pair *pairs;
+    struct cbor_load_result result;
 
     if (cose == NULL || pkey == NULL || alg == NULL) {
         return NGX_ERROR;
@@ -353,10 +354,10 @@ ngx_int_t
 ngx_auth_webauthn_cose_to_der(ngx_pool_t *pool, const u_char *cose,
     size_t cose_len, ngx_str_t *der, int *alg)
 {
-    int        der_len;
-    u_char    *p;
-    EVP_PKEY  *pkey = NULL;
-    ngx_int_t  rc;
+    int der_len;
+    u_char *p;
+    EVP_PKEY *pkey = NULL;
+    ngx_int_t rc;
 
     if (pool == NULL || der == NULL) {
         return NGX_ERROR;

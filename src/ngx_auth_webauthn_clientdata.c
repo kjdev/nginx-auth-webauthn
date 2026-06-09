@@ -14,7 +14,7 @@ static ngx_int_t
 ngx_auth_webauthn_clientdata_get_string(nxe_json_t *root, const char *key,
     ngx_str_t *out)
 {
-    nxe_json_t  *node;
+    nxe_json_t *node;
 
     node = nxe_json_object_get(root, key);
     if (node == NULL) {
@@ -42,16 +42,16 @@ ngx_auth_webauthn_clientdata_verify(ngx_pool_t *pool, const u_char *data,
     size_t len, ngx_str_t *expected_type, ngx_str_t *expected_challenge,
     ngx_str_t *allowed_origins, ngx_uint_t norigins)
 {
-    ngx_str_t    input;
-    ngx_str_t    type;
-    ngx_str_t    challenge_b64;
-    ngx_str_t    challenge;
-    ngx_str_t    origin;
-    nxe_json_t  *root;
-    nxe_json_t  *cross_origin_node;
-    ngx_flag_t   cross_origin;
-    ngx_uint_t   i;
-    ngx_int_t    rc;
+    ngx_str_t input;
+    ngx_str_t type;
+    ngx_str_t challenge_b64;
+    ngx_str_t challenge;
+    ngx_str_t origin;
+    nxe_json_t *root;
+    nxe_json_t *cross_origin_node;
+    ngx_flag_t cross_origin;
+    ngx_uint_t i;
+    ngx_int_t rc;
 
     if (pool == NULL || data == NULL || expected_type == NULL
         || expected_challenge == NULL)
@@ -90,7 +90,7 @@ ngx_auth_webauthn_clientdata_verify(ngx_pool_t *pool, const u_char *data,
     }
 
     challenge.data = ngx_pnalloc(pool,
-        ngx_base64_decoded_length(challenge_b64.len));
+                                 ngx_base64_decoded_length(challenge_b64.len));
     if (challenge.data == NULL) {
         rc = NGX_ERROR;
         goto done;

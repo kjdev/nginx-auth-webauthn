@@ -13,9 +13,9 @@
 
 
 struct ngx_auth_webauthn_redis_s {
-    redisContext  *ctx;
-    ngx_pool_t    *pool;
-    ngx_log_t     *log;
+    redisContext *ctx;
+    ngx_pool_t   *pool;
+    ngx_log_t    *log;
 };
 
 
@@ -26,7 +26,7 @@ struct ngx_auth_webauthn_redis_s {
 static struct timeval
 ngx_auth_webauthn_redis_timeval(ngx_uint_t ms)
 {
-    struct timeval  tv;
+    struct timeval tv;
 
     tv.tv_sec = (time_t) (ms / 1000);
     tv.tv_usec = (suseconds_t) ((ms % 1000) * 1000);
@@ -44,19 +44,20 @@ static redisReply *
 ngx_auth_webauthn_redis_exec(ngx_auth_webauthn_redis_t *redis, int argc,
     const char **argv, const size_t *argvlen)
 {
-    redisReply  *reply;
+    redisReply *reply;
 
     reply = redisCommandArgv(redis->ctx, argc, argv, argvlen);
 
     if (reply == NULL) {
         ngx_log_error(NGX_LOG_ERR, redis->log, 0,
-            "auth_webauthn: redis command failed: %s", redis->ctx->errstr);
+                      "auth_webauthn: redis command failed: %s",
+                      redis->ctx->errstr);
         return NULL;
     }
 
     if (reply->type == REDIS_REPLY_ERROR) {
         ngx_log_error(NGX_LOG_ERR, redis->log, 0,
-            "auth_webauthn: redis error reply: %s", reply->str);
+                      "auth_webauthn: redis error reply: %s", reply->str);
     }
 
     return reply;
@@ -90,14 +91,14 @@ ngx_int_t
 ngx_auth_webauthn_redis_connect(ngx_pool_t *pool, ngx_log_t *log,
     ngx_auth_webauthn_redis_conf_t *conf, ngx_auth_webauthn_redis_t **out)
 {
-    char                        *host;
-    char                         numbuf[NGX_AUTH_WEBAUTHN_REDIS_NUMBUF];
-    int                          n;
-    struct timeval               tv;
-    redisReply                  *reply;
-    ngx_auth_webauthn_redis_t   *redis;
-    const char                  *argv[2];
-    size_t                       argvlen[2];
+    char *host;
+    char numbuf[NGX_AUTH_WEBAUTHN_REDIS_NUMBUF];
+    int n;
+    struct timeval tv;
+    redisReply *reply;
+    ngx_auth_webauthn_redis_t *redis;
+    const char *argv[2];
+    size_t argvlen[2];
 
     if (pool == NULL || conf == NULL || out == NULL || conf->host.len == 0) {
         return NGX_ERROR;
@@ -128,9 +129,9 @@ ngx_auth_webauthn_redis_connect(ngx_pool_t *pool, ngx_log_t *log,
 
     if (redis->ctx == NULL || redis->ctx->err) {
         ngx_log_error(NGX_LOG_ERR, log, 0,
-            "auth_webauthn: redis connect to %s:%d failed: %s",
-            host, conf->port,
-            redis->ctx ? redis->ctx->errstr : "allocation failed");
+                      "auth_webauthn: redis connect to %s:%d failed: %s",
+                      host, conf->port,
+                      redis->ctx ? redis->ctx->errstr : "allocation failed");
         if (redis->ctx != NULL) {
             redisFree(redis->ctx);
             redis->ctx = NULL;
@@ -207,13 +208,13 @@ ngx_int_t
 ngx_auth_webauthn_redis_hset(ngx_auth_webauthn_redis_t *redis, ngx_str_t *key,
     ngx_auth_webauthn_redis_pair_t *pairs, ngx_uint_t npairs)
 {
-    int           argc;
-    int           i;
-    ngx_uint_t    p;
-    ngx_int_t     rc;
-    const char  **argv;
-    size_t       *argvlen;
-    redisReply   *reply;
+    int argc;
+    int i;
+    ngx_uint_t p;
+    ngx_int_t rc;
+    const char **argv;
+    size_t *argvlen;
+    redisReply *reply;
 
     if (redis == NULL || redis->ctx == NULL || key == NULL
         || (npairs > 0 && pairs == NULL))
@@ -269,15 +270,15 @@ ngx_auth_webauthn_redis_hgetall(ngx_auth_webauthn_redis_t *redis,
     ngx_pool_t *pool, ngx_str_t *key,
     ngx_auth_webauthn_redis_pair_t **pairs, ngx_uint_t *npairs)
 {
-    size_t                            i;
-    size_t                            n;
-    ngx_int_t                         rc;
-    redisReply                       *reply;
-    redisReply                       *name;
-    redisReply                       *value;
-    const char                       *argv[2];
-    size_t                            argvlen[2];
-    ngx_auth_webauthn_redis_pair_t   *out;
+    size_t i;
+    size_t n;
+    ngx_int_t rc;
+    redisReply *reply;
+    redisReply *name;
+    redisReply *value;
+    const char *argv[2];
+    size_t argvlen[2];
+    ngx_auth_webauthn_redis_pair_t *out;
 
     if (redis == NULL || redis->ctx == NULL || pool == NULL || key == NULL
         || pairs == NULL || npairs == NULL)
@@ -321,9 +322,9 @@ ngx_auth_webauthn_redis_hgetall(ngx_auth_webauthn_redis_t *redis,
         value = reply->element[i * 2 + 1];
 
         if (ngx_auth_webauthn_redis_dup(pool, name->str, name->len,
-                &out[i].name) != NGX_OK
+                                        &out[i].name) != NGX_OK
             || ngx_auth_webauthn_redis_dup(pool, value->str, value->len,
-                &out[i].value) != NGX_OK)
+                                           &out[i].value) != NGX_OK)
         {
             rc = NGX_ERROR;
             break;
@@ -346,10 +347,10 @@ ngx_auth_webauthn_redis_hgetall(ngx_auth_webauthn_redis_t *redis,
 ngx_int_t
 ngx_auth_webauthn_redis_del(ngx_auth_webauthn_redis_t *redis, ngx_str_t *key)
 {
-    ngx_int_t     rc;
-    redisReply   *reply;
-    const char   *argv[2];
-    size_t        argvlen[2];
+    ngx_int_t rc;
+    redisReply *reply;
+    const char *argv[2];
+    size_t argvlen[2];
 
     if (redis == NULL || redis->ctx == NULL || key == NULL) {
         return NGX_ERROR;
@@ -377,10 +378,10 @@ static ngx_int_t
 ngx_auth_webauthn_redis_set_op(ngx_auth_webauthn_redis_t *redis,
     const char *cmd, size_t cmdlen, ngx_str_t *key, ngx_str_t *member)
 {
-    ngx_int_t     rc;
-    redisReply   *reply;
-    const char   *argv[3];
-    size_t        argvlen[3];
+    ngx_int_t rc;
+    redisReply *reply;
+    const char *argv[3];
+    size_t argvlen[3];
 
     if (redis == NULL || redis->ctx == NULL || key == NULL || member == NULL) {
         return NGX_ERROR;
@@ -410,7 +411,7 @@ ngx_auth_webauthn_redis_sadd(ngx_auth_webauthn_redis_t *redis, ngx_str_t *key,
     ngx_str_t *member)
 {
     return ngx_auth_webauthn_redis_set_op(redis, "SADD", sizeof("SADD") - 1,
-        key, member);
+                                          key, member);
 }
 
 
@@ -419,7 +420,7 @@ ngx_auth_webauthn_redis_srem(ngx_auth_webauthn_redis_t *redis, ngx_str_t *key,
     ngx_str_t *member)
 {
     return ngx_auth_webauthn_redis_set_op(redis, "SREM", sizeof("SREM") - 1,
-        key, member);
+                                          key, member);
 }
 
 
@@ -427,14 +428,14 @@ ngx_int_t
 ngx_auth_webauthn_redis_smembers(ngx_auth_webauthn_redis_t *redis,
     ngx_pool_t *pool, ngx_str_t *key, ngx_str_t **members, ngx_uint_t *nmembers)
 {
-    size_t        i;
-    size_t        n;
-    ngx_int_t     rc;
-    redisReply   *reply;
-    redisReply   *member;
-    const char   *argv[2];
-    size_t        argvlen[2];
-    ngx_str_t    *out;
+    size_t i;
+    size_t n;
+    ngx_int_t rc;
+    redisReply *reply;
+    redisReply *member;
+    const char *argv[2];
+    size_t argvlen[2];
+    ngx_str_t *out;
 
     if (redis == NULL || redis->ctx == NULL || pool == NULL || key == NULL
         || members == NULL || nmembers == NULL)
@@ -475,7 +476,7 @@ ngx_auth_webauthn_redis_smembers(ngx_auth_webauthn_redis_t *redis,
     for (i = 0; i < n; i++) {
         member = reply->element[i];
         if (ngx_auth_webauthn_redis_dup(pool, member->str, member->len,
-                &out[i]) != NGX_OK)
+                                        &out[i]) != NGX_OK)
         {
             rc = NGX_ERROR;
             break;
@@ -499,12 +500,12 @@ ngx_int_t
 ngx_auth_webauthn_redis_expire(ngx_auth_webauthn_redis_t *redis, ngx_str_t *key,
     ngx_uint_t seconds)
 {
-    char          numbuf[NGX_AUTH_WEBAUTHN_REDIS_NUMBUF];
-    int           n;
-    ngx_int_t     rc;
-    redisReply   *reply;
-    const char   *argv[3];
-    size_t        argvlen[3];
+    char numbuf[NGX_AUTH_WEBAUTHN_REDIS_NUMBUF];
+    int n;
+    ngx_int_t rc;
+    redisReply *reply;
+    const char *argv[3];
+    size_t argvlen[3];
 
     if (redis == NULL || redis->ctx == NULL || key == NULL) {
         return NGX_ERROR;
@@ -538,12 +539,12 @@ ngx_int_t
 ngx_auth_webauthn_redis_set_ex(ngx_auth_webauthn_redis_t *redis, ngx_str_t *key,
     ngx_str_t *value, ngx_uint_t seconds)
 {
-    char          numbuf[NGX_AUTH_WEBAUTHN_REDIS_NUMBUF];
-    int           n;
-    ngx_int_t     rc;
-    redisReply   *reply;
-    const char   *argv[5];
-    size_t        argvlen[5];
+    char numbuf[NGX_AUTH_WEBAUTHN_REDIS_NUMBUF];
+    int n;
+    ngx_int_t rc;
+    redisReply *reply;
+    const char *argv[5];
+    size_t argvlen[5];
 
     if (redis == NULL || redis->ctx == NULL || key == NULL || value == NULL) {
         return NGX_ERROR;
@@ -582,9 +583,9 @@ ngx_int_t
 ngx_auth_webauthn_redis_getdel(ngx_auth_webauthn_redis_t *redis, ngx_str_t *key,
     ngx_uint_t *found)
 {
-    redisReply   *reply;
-    const char   *argv[2];
-    size_t        argvlen[2];
+    redisReply *reply;
+    const char *argv[2];
+    size_t argvlen[2];
 
     if (redis == NULL || redis->ctx == NULL || key == NULL || found == NULL) {
         return NGX_ERROR;

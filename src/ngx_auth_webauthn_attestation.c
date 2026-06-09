@@ -81,10 +81,10 @@ static ngx_int_t
 ngx_auth_webauthn_attestation_parse_stmt(ngx_pool_t *pool, cbor_item_t *stmt,
     ngx_auth_webauthn_attestation_t *out)
 {
-    size_t             i;
-    size_t             size;
-    int64_t            alg;
-    struct cbor_pair  *pairs;
+    size_t i;
+    size_t size;
+    int64_t alg;
+    struct cbor_pair *pairs;
 
     if (!cbor_isa_map(stmt)) {
         return NGX_DECLINED;
@@ -94,8 +94,8 @@ ngx_auth_webauthn_attestation_parse_stmt(ngx_pool_t *pool, cbor_item_t *stmt,
     pairs = cbor_map_handle(stmt);
 
     for (i = 0; i < size; i++) {
-        cbor_item_t  *k = pairs[i].key;
-        cbor_item_t  *v = pairs[i].value;
+        cbor_item_t *k = pairs[i].key;
+        cbor_item_t *v = pairs[i].value;
 
         if (ngx_auth_webauthn_attestation_str_eq(k, "alg", sizeof("alg") - 1)) {
             if (ngx_auth_webauthn_attestation_int(v, &alg) == NGX_OK) {
@@ -103,20 +103,21 @@ ngx_auth_webauthn_attestation_parse_stmt(ngx_pool_t *pool, cbor_item_t *stmt,
             }
 
         } else if (ngx_auth_webauthn_attestation_str_eq(k, "sig",
-                       sizeof("sig") - 1))
+                                                        sizeof("sig") - 1))
         {
             if (!cbor_isa_bytestring(v) || !cbor_bytestring_is_definite(v)) {
                 return NGX_DECLINED;
             }
             if (ngx_auth_webauthn_attestation_dup(pool,
-                    cbor_bytestring_handle(v), cbor_bytestring_length(v),
-                    &out->att_sig) != NGX_OK)
+                                                  cbor_bytestring_handle(v),
+                                                  cbor_bytestring_length(v),
+                                                  &out->att_sig) != NGX_OK)
             {
                 return NGX_ERROR;
             }
 
         } else if (ngx_auth_webauthn_attestation_str_eq(k, "x5c",
-                       sizeof("x5c") - 1))
+                                                        sizeof("x5c") - 1))
         {
             if (cbor_isa_array(v) && cbor_array_size(v) > 0) {
                 out->has_x5c = 1;
@@ -132,15 +133,15 @@ ngx_int_t
 ngx_auth_webauthn_attestation_parse(ngx_pool_t *pool, const u_char *data,
     size_t len, ngx_auth_webauthn_attestation_t *out)
 {
-    size_t                    i;
-    size_t                    size;
-    ngx_int_t                 rc;
-    cbor_item_t              *root = NULL;
-    cbor_item_t              *v_fmt = NULL;
-    cbor_item_t              *v_auth_data = NULL;
-    cbor_item_t              *v_att_stmt = NULL;
-    struct cbor_pair         *pairs;
-    struct cbor_load_result   result;
+    size_t i;
+    size_t size;
+    ngx_int_t rc;
+    cbor_item_t *root = NULL;
+    cbor_item_t *v_fmt = NULL;
+    cbor_item_t *v_auth_data = NULL;
+    cbor_item_t *v_att_stmt = NULL;
+    struct cbor_pair *pairs;
+    struct cbor_load_result result;
 
     if (pool == NULL || out == NULL) {
         return NGX_ERROR;
@@ -166,18 +167,18 @@ ngx_auth_webauthn_attestation_parse(ngx_pool_t *pool, const u_char *data,
     pairs = cbor_map_handle(root);
 
     for (i = 0; i < size; i++) {
-        cbor_item_t  *k = pairs[i].key;
+        cbor_item_t *k = pairs[i].key;
 
         if (ngx_auth_webauthn_attestation_str_eq(k, "fmt", sizeof("fmt") - 1)) {
             v_fmt = pairs[i].value;
 
         } else if (ngx_auth_webauthn_attestation_str_eq(k, "authData",
-                       sizeof("authData") - 1))
+                                                        sizeof("authData") - 1))
         {
             v_auth_data = pairs[i].value;
 
         } else if (ngx_auth_webauthn_attestation_str_eq(k, "attStmt",
-                       sizeof("attStmt") - 1))
+                                                        sizeof("attStmt") - 1))
         {
             v_att_stmt = pairs[i].value;
         }
@@ -196,10 +197,14 @@ ngx_auth_webauthn_attestation_parse(ngx_pool_t *pool, const u_char *data,
     }
 
     if (ngx_auth_webauthn_attestation_dup(pool, cbor_string_handle(v_fmt),
-            cbor_string_length(v_fmt), &out->fmt) != NGX_OK
+                                          cbor_string_length(v_fmt),
+                                          &out->fmt) != NGX_OK
         || ngx_auth_webauthn_attestation_dup(pool,
-            cbor_bytestring_handle(v_auth_data),
-            cbor_bytestring_length(v_auth_data), &out->auth_data) != NGX_OK)
+                                             cbor_bytestring_handle(
+                                                 v_auth_data),
+                                             cbor_bytestring_length(
+                                                 v_auth_data),
+                                             &out->auth_data) != NGX_OK)
     {
         rc = NGX_ERROR;
         goto done;
@@ -242,14 +247,14 @@ ngx_auth_webauthn_attestation_verify_packed(ngx_pool_t *pool,
     ngx_auth_webauthn_attestation_t *att, ngx_auth_webauthn_authdata_t *ad,
     ngx_str_t *client_data_hash)
 {
-    const EVP_MD  *md;
-    u_char        *signed_data;
-    size_t         signed_len;
-    int            key_alg;
-    int            ret;
-    ngx_int_t      rc;
-    EVP_PKEY      *pkey = NULL;
-    EVP_MD_CTX    *ctx = NULL;
+    const EVP_MD *md;
+    u_char *signed_data;
+    size_t signed_len;
+    int key_alg;
+    int ret;
+    ngx_int_t rc;
+    EVP_PKEY *pkey = NULL;
+    EVP_MD_CTX *ctx = NULL;
 
     if (att->att_sig.len == 0) {
         return NGX_DECLINED;
@@ -263,7 +268,8 @@ ngx_auth_webauthn_attestation_verify_packed(ngx_pool_t *pool,
     }
 
     rc = ngx_auth_webauthn_cose_to_pkey(ad->cose_public_key.data,
-        ad->cose_public_key.len, &pkey, &key_alg);
+                                        ad->cose_public_key.len, &pkey,
+                                        &key_alg);
     if (rc != NGX_OK) {
         return rc;
     }
@@ -296,7 +302,7 @@ ngx_auth_webauthn_attestation_verify_packed(ngx_pool_t *pool,
 
     ngx_memcpy(signed_data, att->auth_data.data, att->auth_data.len);
     ngx_memcpy(signed_data + att->auth_data.len, client_data_hash->data,
-        client_data_hash->len);
+               client_data_hash->len);
 
     ctx = EVP_MD_CTX_new();
     if (ctx == NULL) {
@@ -308,7 +314,7 @@ ngx_auth_webauthn_attestation_verify_packed(ngx_pool_t *pool,
 
     if (EVP_DigestVerifyInit(ctx, NULL, md, NULL, pkey) == 1) {
         ret = EVP_DigestVerify(ctx, att->att_sig.data, att->att_sig.len,
-            signed_data, signed_len);
+                               signed_data, signed_len);
         if (ret == 1) {
             rc = NGX_OK;
         } else if (ret == 0) {
@@ -328,9 +334,9 @@ ngx_auth_webauthn_attestation_verify(ngx_pool_t *pool,
     ngx_auth_webauthn_attestation_t *att, ngx_str_t *expected_rp_id,
     ngx_str_t *client_data_hash, ngx_uint_t require)
 {
-    u_char                        rp_id_hash[NGX_AUTH_WEBAUTHN_SHA256_LEN];
-    ngx_int_t                     rc;
-    ngx_auth_webauthn_authdata_t  ad;
+    u_char rp_id_hash[NGX_AUTH_WEBAUTHN_SHA256_LEN];
+    ngx_int_t rc;
+    ngx_auth_webauthn_authdata_t ad;
 
     if (pool == NULL || att == NULL || expected_rp_id == NULL
         || client_data_hash == NULL)
@@ -340,13 +346,13 @@ ngx_auth_webauthn_attestation_verify(ngx_pool_t *pool,
 
     /* rpIdHash must match the configured RP ID regardless of format. */
     rc = ngx_auth_webauthn_authdata_parse(att->auth_data.data,
-        att->auth_data.len, &ad);
+                                          att->auth_data.len, &ad);
     if (rc != NGX_OK) {
         return rc;
     }
 
     if (ngx_auth_webauthn_hash_sha256(expected_rp_id->data, expected_rp_id->len,
-            rp_id_hash) != NGX_OK)
+                                      rp_id_hash) != NGX_OK)
     {
         return NGX_ERROR;
     }
@@ -368,7 +374,7 @@ ngx_auth_webauthn_attestation_verify(ngx_pool_t *pool,
 
     /* require == PACKED: only packed self-attestation. */
     if (!ngx_auth_webauthn_attestation_fmt_is(att, "packed",
-            sizeof("packed") - 1))
+                                              sizeof("packed") - 1))
     {
         return NGX_DECLINED;
     }
@@ -378,5 +384,5 @@ ngx_auth_webauthn_attestation_verify(ngx_pool_t *pool,
     }
 
     return ngx_auth_webauthn_attestation_verify_packed(pool, att, &ad,
-        client_data_hash);
+                                                       client_data_hash);
 }

@@ -36,10 +36,10 @@ void
 ngx_compat_log_error(ngx_uint_t level, ngx_log_t *log, ngx_int_t err,
     const char *fmt, ...)
 {
-    va_list      args;
-    const char  *p;
-    char        *q;
-    char         buf[512];
+    va_list args;
+    const char *p;
+    char *q;
+    char buf[512];
 
     (void) err;
 

@@ -13,7 +13,7 @@
 ngx_int_t
 ngx_auth_webauthn_hash_sha256(const u_char *data, size_t len, u_char *out)
 {
-    unsigned int  digest_len;
+    unsigned int digest_len;
 
     if (out == NULL) {
         return NGX_ERROR;

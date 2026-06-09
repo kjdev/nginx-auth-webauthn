@@ -53,12 +53,12 @@ ngx_auth_webauthn_assertion_check_signature(
     ngx_auth_webauthn_assertion_cred_t *cred, const u_char *signed_data,
     size_t signed_len, ngx_str_t *signature)
 {
-    const u_char   *der;
-    const EVP_MD   *md;
-    EVP_PKEY       *pkey;
-    EVP_MD_CTX     *ctx;
-    ngx_int_t       rc;
-    int             ret;
+    const u_char *der;
+    const EVP_MD *md;
+    EVP_PKEY *pkey;
+    EVP_MD_CTX *ctx;
+    ngx_int_t rc;
+    int ret;
 
     switch (cred->alg) {
     case -7:    /* ES256 */
@@ -93,7 +93,7 @@ ngx_auth_webauthn_assertion_check_signature(
          * through unchanged.
          */
         ret = EVP_DigestVerify(ctx, signature->data, signature->len,
-            signed_data, signed_len);
+                               signed_data, signed_len);
 
         if (ret == 1) {
             rc = NGX_OK;
@@ -116,12 +116,12 @@ ngx_auth_webauthn_assertion_verify(ngx_pool_t *pool,
     ngx_auth_webauthn_assertion_policy_t *policy,
     ngx_auth_webauthn_assertion_result_t *result)
 {
-    u_char                         rp_id_hash[NGX_AUTH_WEBAUTHN_SHA256_LEN];
-    u_char                        *signed_data;
-    size_t                         signed_len;
-    ngx_str_t                      expected_type = ngx_string("webauthn.get");
-    ngx_int_t                      rc;
-    ngx_auth_webauthn_authdata_t   ad;
+    u_char rp_id_hash[NGX_AUTH_WEBAUTHN_SHA256_LEN];
+    u_char *signed_data;
+    size_t signed_len;
+    ngx_str_t expected_type = ngx_string("webauthn.get");
+    ngx_int_t rc;
+    ngx_auth_webauthn_authdata_t ad;
 
     if (pool == NULL || assertion == NULL || cred == NULL || policy == NULL
         || result == NULL)
@@ -131,16 +131,20 @@ ngx_auth_webauthn_assertion_verify(ngx_pool_t *pool,
 
     /* clientData: type / challenge / origin / crossOrigin */
     rc = ngx_auth_webauthn_clientdata_verify(pool,
-        assertion->client_data_json.data, assertion->client_data_json.len,
-        &expected_type, &policy->expected_challenge,
-        policy->allowed_origins, policy->norigins);
+                                             assertion->client_data_json.data,
+                                             assertion->client_data_json.len,
+                                             &expected_type,
+                                             &policy->expected_challenge,
+                                             policy->allowed_origins,
+                                             policy->norigins);
     if (rc != NGX_OK) {
         return rc;
     }
 
     /* authData binary structure */
     rc = ngx_auth_webauthn_authdata_parse(assertion->authenticator_data.data,
-        assertion->authenticator_data.len, &ad);
+                                          assertion->authenticator_data.len,
+                                          &ad);
     if (rc != NGX_OK) {
         return rc;
     }
@@ -154,7 +158,7 @@ ngx_auth_webauthn_assertion_verify(ngx_pool_t *pool,
 
     /* rpIdHash == SHA-256(rpId) */
     if (ngx_auth_webauthn_hash_sha256(policy->rp_id.data, policy->rp_id.len,
-            rp_id_hash) != NGX_OK)
+                                      rp_id_hash) != NGX_OK)
     {
         return NGX_ERROR;
     }
@@ -178,7 +182,8 @@ ngx_auth_webauthn_assertion_verify(ngx_pool_t *pool,
 
     /* Sign-counter clone detection */
     if (ngx_auth_webauthn_assertion_check_counter(policy->clone_detection,
-            ad.sign_count, cred->sign_count) != NGX_OK)
+                                                  ad.sign_count,
+                                                  cred->sign_count) != NGX_OK)
     {
         return NGX_DECLINED;
     }
@@ -193,17 +198,20 @@ ngx_auth_webauthn_assertion_verify(ngx_pool_t *pool,
     }
 
     ngx_memcpy(signed_data, assertion->authenticator_data.data,
-        assertion->authenticator_data.len);
+               assertion->authenticator_data.len);
 
     if (ngx_auth_webauthn_hash_sha256(assertion->client_data_json.data,
-            assertion->client_data_json.len,
-            signed_data + assertion->authenticator_data.len) != NGX_OK)
+                                      assertion->client_data_json.len,
+                                      signed_data +
+                                      assertion->authenticator_data.len) !=
+        NGX_OK)
     {
         return NGX_ERROR;
     }
 
     rc = ngx_auth_webauthn_assertion_check_signature(cred, signed_data,
-        signed_len, &assertion->signature);
+                                                     signed_len,
+                                                     &assertion->signature);
     if (rc != NGX_OK) {
         return rc;
     }

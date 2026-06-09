@@ -32,9 +32,9 @@ static ngx_int_t
 ngx_auth_webauthn_credential_record_key(ngx_pool_t *pool, ngx_str_t *prefix,
     ngx_str_t *cid, ngx_str_t *out)
 {
-    static const char  mid[] = "cred:";
-    size_t             midlen = sizeof(mid) - 1;
-    u_char            *p;
+    static const char mid[] = "cred:";
+    size_t midlen = sizeof(mid) - 1;
+    u_char *p;
 
     out->len = prefix->len + midlen + cid->len;
     p = ngx_pnalloc(pool, out->len);
@@ -56,11 +56,11 @@ static ngx_int_t
 ngx_auth_webauthn_credential_index_key(ngx_pool_t *pool, ngx_str_t *prefix,
     ngx_str_t *uid, ngx_str_t *out)
 {
-    static const char  mid[] = "user:";
-    static const char  suffix[] = ":creds";
-    size_t             midlen = sizeof(mid) - 1;
-    size_t             suffixlen = sizeof(suffix) - 1;
-    u_char            *p;
+    static const char mid[] = "user:";
+    static const char suffix[] = ":creds";
+    size_t midlen = sizeof(mid) - 1;
+    size_t suffixlen = sizeof(suffix) - 1;
+    u_char *p;
 
     out->len = prefix->len + midlen + uid->len + suffixlen;
     p = ngx_pnalloc(pool, out->len);
@@ -86,10 +86,10 @@ ngx_auth_webauthn_credential_index_key(ngx_pool_t *pool, ngx_str_t *prefix,
 static ngx_int_t
 ngx_auth_webauthn_credential_atoi64(ngx_str_t *s, int64_t *out)
 {
-    size_t    i;
-    int       neg;
-    uint64_t  acc;
-    uint64_t  limit;
+    size_t i;
+    int neg;
+    uint64_t acc;
+    uint64_t limit;
 
     if (s->len == 0) {
         return NGX_ERROR;
@@ -110,7 +110,7 @@ ngx_auth_webauthn_credential_atoi64(ngx_str_t *s, int64_t *out)
 
     acc = 0;
     for ( /* void */ ; i < s->len; i++) {
-        u_char  c = s->data[i];
+        u_char c = s->data[i];
 
         if (c < '0' || c > '9') {
             return NGX_ERROR;
@@ -146,11 +146,11 @@ ngx_auth_webauthn_credential_get(ngx_auth_webauthn_redis_t *redis,
     ngx_pool_t *pool, ngx_str_t *prefix, ngx_str_t *credential_id,
     ngx_auth_webauthn_credential_t *out)
 {
-    ngx_str_t                         key;
-    ngx_uint_t                        i;
-    ngx_uint_t                        npairs;
-    int64_t                           v;
-    ngx_auth_webauthn_redis_pair_t   *pairs;
+    ngx_str_t key;
+    ngx_uint_t i;
+    ngx_uint_t npairs;
+    int64_t v;
+    ngx_auth_webauthn_redis_pair_t *pairs;
 
     if (redis == NULL || pool == NULL || prefix == NULL || credential_id == NULL
         || out == NULL)
@@ -162,7 +162,7 @@ ngx_auth_webauthn_credential_get(ngx_auth_webauthn_redis_t *redis,
     out->credential_id = *credential_id;
 
     if (ngx_auth_webauthn_credential_record_key(pool, prefix, credential_id,
-            &key) != NGX_OK)
+                                                &key) != NGX_OK)
     {
         return NGX_ERROR;
     }
@@ -178,24 +178,25 @@ ngx_auth_webauthn_credential_get(ngx_auth_webauthn_redis_t *redis,
     }
 
     for (i = 0; i < npairs; i++) {
-        ngx_str_t  *n = &pairs[i].name;
-        ngx_str_t  *val = &pairs[i].value;
+        ngx_str_t *n = &pairs[i].name;
+        ngx_str_t *val = &pairs[i].value;
 
         if (n->len == sizeof(NGX_AUTH_WEBAUTHN_CRED_F_USER_ID) - 1
             && ngx_strncmp(n->data, NGX_AUTH_WEBAUTHN_CRED_F_USER_ID, n->len)
-               == 0)
+            == 0)
         {
             out->user_id = *val;
 
         } else if (n->len == sizeof(NGX_AUTH_WEBAUTHN_CRED_F_PUBLIC_KEY) - 1
                    && ngx_strncmp(n->data,
-                          NGX_AUTH_WEBAUTHN_CRED_F_PUBLIC_KEY, n->len) == 0)
+                                  NGX_AUTH_WEBAUTHN_CRED_F_PUBLIC_KEY,
+                                  n->len) == 0)
         {
             out->public_key = *val;
 
         } else if (n->len == sizeof(NGX_AUTH_WEBAUTHN_CRED_F_ALG) - 1
                    && ngx_strncmp(n->data, NGX_AUTH_WEBAUTHN_CRED_F_ALG, n->len)
-                      == 0)
+                   == 0)
         {
             if (ngx_auth_webauthn_credential_atoi64(val, &v) != NGX_OK
                 || v < INT32_MIN || v > INT32_MAX)
@@ -206,7 +207,8 @@ ngx_auth_webauthn_credential_get(ngx_auth_webauthn_redis_t *redis,
 
         } else if (n->len == sizeof(NGX_AUTH_WEBAUTHN_CRED_F_SIGN_COUNT) - 1
                    && ngx_strncmp(n->data,
-                          NGX_AUTH_WEBAUTHN_CRED_F_SIGN_COUNT, n->len) == 0)
+                                  NGX_AUTH_WEBAUTHN_CRED_F_SIGN_COUNT,
+                                  n->len) == 0)
         {
             if (ngx_auth_webauthn_credential_atoi64(val, &v) != NGX_OK
                 || v < 0 || v > (int64_t) UINT32_MAX)
@@ -217,7 +219,8 @@ ngx_auth_webauthn_credential_get(ngx_auth_webauthn_redis_t *redis,
 
         } else if (n->len == sizeof(NGX_AUTH_WEBAUTHN_CRED_F_CREATED_AT) - 1
                    && ngx_strncmp(n->data,
-                          NGX_AUTH_WEBAUTHN_CRED_F_CREATED_AT, n->len) == 0)
+                                  NGX_AUTH_WEBAUTHN_CRED_F_CREATED_AT,
+                                  n->len) == 0)
         {
             if (ngx_auth_webauthn_credential_atoi64(val, &v) == NGX_OK) {
                 out->created_at = v;
@@ -225,7 +228,8 @@ ngx_auth_webauthn_credential_get(ngx_auth_webauthn_redis_t *redis,
 
         } else if (n->len == sizeof(NGX_AUTH_WEBAUTHN_CRED_F_LAST_USED_AT) - 1
                    && ngx_strncmp(n->data,
-                          NGX_AUTH_WEBAUTHN_CRED_F_LAST_USED_AT, n->len) == 0)
+                                  NGX_AUTH_WEBAUTHN_CRED_F_LAST_USED_AT,
+                                  n->len) == 0)
         {
             if (ngx_auth_webauthn_credential_atoi64(val, &v) == NGX_OK) {
                 out->last_used_at = v;
@@ -233,17 +237,18 @@ ngx_auth_webauthn_credential_get(ngx_auth_webauthn_redis_t *redis,
 
         } else if (n->len == sizeof(NGX_AUTH_WEBAUTHN_CRED_F_AAGUID) - 1
                    && ngx_strncmp(n->data, NGX_AUTH_WEBAUTHN_CRED_F_AAGUID,
-                          n->len) == 0)
+                                  n->len) == 0)
         {
             if (val->len == NGX_AUTH_WEBAUTHN_AAGUID_LEN) {
                 ngx_memcpy(out->aaguid, val->data,
-                    NGX_AUTH_WEBAUTHN_AAGUID_LEN);
+                           NGX_AUTH_WEBAUTHN_AAGUID_LEN);
                 out->has_aaguid = 1;
             }
 
         } else if (n->len == sizeof(NGX_AUTH_WEBAUTHN_CRED_F_TRANSPORTS) - 1
                    && ngx_strncmp(n->data,
-                          NGX_AUTH_WEBAUTHN_CRED_F_TRANSPORTS, n->len) == 0)
+                                  NGX_AUTH_WEBAUTHN_CRED_F_TRANSPORTS,
+                                  n->len) == 0)
         {
             out->transports = *val;
         }
@@ -262,15 +267,15 @@ ngx_int_t
 ngx_auth_webauthn_credential_put(ngx_auth_webauthn_redis_t *redis,
     ngx_pool_t *pool, ngx_str_t *prefix, ngx_auth_webauthn_credential_t *cred)
 {
-    ngx_str_t                       key;
-    ngx_str_t                       index_key;
-    ngx_uint_t                      npairs;
-    int                             n;
-    char                            alg_buf[NGX_AUTH_WEBAUTHN_CRED_NUMBUF];
-    char                            sc_buf[NGX_AUTH_WEBAUTHN_CRED_NUMBUF];
-    char                            ca_buf[NGX_AUTH_WEBAUTHN_CRED_NUMBUF];
-    char                            lu_buf[NGX_AUTH_WEBAUTHN_CRED_NUMBUF];
-    ngx_auth_webauthn_redis_pair_t  pairs[NGX_AUTH_WEBAUTHN_CRED_MAX_PAIRS];
+    ngx_str_t key;
+    ngx_str_t index_key;
+    ngx_uint_t npairs;
+    int n;
+    char alg_buf[NGX_AUTH_WEBAUTHN_CRED_NUMBUF];
+    char sc_buf[NGX_AUTH_WEBAUTHN_CRED_NUMBUF];
+    char ca_buf[NGX_AUTH_WEBAUTHN_CRED_NUMBUF];
+    char lu_buf[NGX_AUTH_WEBAUTHN_CRED_NUMBUF];
+    ngx_auth_webauthn_redis_pair_t pairs[NGX_AUTH_WEBAUTHN_CRED_MAX_PAIRS];
 
     if (redis == NULL || pool == NULL || prefix == NULL || cred == NULL
         || cred->credential_id.len == 0 || cred->user_id.len == 0)
@@ -279,7 +284,8 @@ ngx_auth_webauthn_credential_put(ngx_auth_webauthn_redis_t *redis,
     }
 
     if (ngx_auth_webauthn_credential_record_key(pool, prefix,
-            &cred->credential_id, &key) != NGX_OK)
+                                                &cred->credential_id,
+                                                &key) != NGX_OK)
     {
         return NGX_ERROR;
     }
@@ -298,28 +304,36 @@ ngx_auth_webauthn_credential_put(ngx_auth_webauthn_redis_t *redis,
 
     n = snprintf(alg_buf, sizeof(alg_buf), "%d", cred->alg);
     ngx_auth_webauthn_credential_num_pair(&pairs[npairs],
-        NGX_AUTH_WEBAUTHN_CRED_F_ALG, sizeof(NGX_AUTH_WEBAUTHN_CRED_F_ALG) - 1,
-        alg_buf, n);
+                                          NGX_AUTH_WEBAUTHN_CRED_F_ALG,
+                                          sizeof(NGX_AUTH_WEBAUTHN_CRED_F_ALG) -
+                                          1,
+                                          alg_buf, n);
     npairs++;
 
     n = snprintf(sc_buf, sizeof(sc_buf), "%lu",
-        (unsigned long) cred->sign_count);
+                 (unsigned long) cred->sign_count);
     ngx_auth_webauthn_credential_num_pair(&pairs[npairs],
-        NGX_AUTH_WEBAUTHN_CRED_F_SIGN_COUNT,
-        sizeof(NGX_AUTH_WEBAUTHN_CRED_F_SIGN_COUNT) - 1, sc_buf, n);
+                                          NGX_AUTH_WEBAUTHN_CRED_F_SIGN_COUNT,
+                                          sizeof(
+                                              NGX_AUTH_WEBAUTHN_CRED_F_SIGN_COUNT)
+                                          - 1, sc_buf, n);
     npairs++;
 
     n = snprintf(ca_buf, sizeof(ca_buf), "%lld", (long long) cred->created_at);
     ngx_auth_webauthn_credential_num_pair(&pairs[npairs],
-        NGX_AUTH_WEBAUTHN_CRED_F_CREATED_AT,
-        sizeof(NGX_AUTH_WEBAUTHN_CRED_F_CREATED_AT) - 1, ca_buf, n);
+                                          NGX_AUTH_WEBAUTHN_CRED_F_CREATED_AT,
+                                          sizeof(
+                                              NGX_AUTH_WEBAUTHN_CRED_F_CREATED_AT)
+                                          - 1, ca_buf, n);
     npairs++;
 
     n = snprintf(lu_buf, sizeof(lu_buf), "%lld",
-        (long long) cred->last_used_at);
+                 (long long) cred->last_used_at);
     ngx_auth_webauthn_credential_num_pair(&pairs[npairs],
-        NGX_AUTH_WEBAUTHN_CRED_F_LAST_USED_AT,
-        sizeof(NGX_AUTH_WEBAUTHN_CRED_F_LAST_USED_AT) - 1, lu_buf, n);
+                                          NGX_AUTH_WEBAUTHN_CRED_F_LAST_USED_AT,
+                                          sizeof(
+                                              NGX_AUTH_WEBAUTHN_CRED_F_LAST_USED_AT)
+                                          - 1, lu_buf, n);
     npairs++;
 
     if (cred->transports.len > 0) {
@@ -345,7 +359,7 @@ ngx_auth_webauthn_credential_put(ngx_auth_webauthn_redis_t *redis,
 
     /* Index the credential under its user for management / revocation. */
     if (ngx_auth_webauthn_credential_index_key(pool, prefix, &cred->user_id,
-            &index_key) != NGX_OK)
+                                               &index_key) != NGX_OK)
     {
         return NGX_ERROR;
     }
@@ -365,11 +379,11 @@ ngx_auth_webauthn_credential_update_counter(ngx_auth_webauthn_redis_t *redis,
     ngx_pool_t *pool, ngx_str_t *prefix, ngx_str_t *credential_id,
     uint32_t new_count, int64_t last_used_at)
 {
-    ngx_str_t                       key;
-    int                             n;
-    char                            sc_buf[NGX_AUTH_WEBAUTHN_CRED_NUMBUF];
-    char                            lu_buf[NGX_AUTH_WEBAUTHN_CRED_NUMBUF];
-    ngx_auth_webauthn_redis_pair_t  pairs[2];
+    ngx_str_t key;
+    int n;
+    char sc_buf[NGX_AUTH_WEBAUTHN_CRED_NUMBUF];
+    char lu_buf[NGX_AUTH_WEBAUTHN_CRED_NUMBUF];
+    ngx_auth_webauthn_redis_pair_t pairs[2];
 
     if (redis == NULL || pool == NULL || prefix == NULL
         || credential_id == NULL)
@@ -378,20 +392,24 @@ ngx_auth_webauthn_credential_update_counter(ngx_auth_webauthn_redis_t *redis,
     }
 
     if (ngx_auth_webauthn_credential_record_key(pool, prefix, credential_id,
-            &key) != NGX_OK)
+                                                &key) != NGX_OK)
     {
         return NGX_ERROR;
     }
 
     n = snprintf(sc_buf, sizeof(sc_buf), "%lu", (unsigned long) new_count);
     ngx_auth_webauthn_credential_num_pair(&pairs[0],
-        NGX_AUTH_WEBAUTHN_CRED_F_SIGN_COUNT,
-        sizeof(NGX_AUTH_WEBAUTHN_CRED_F_SIGN_COUNT) - 1, sc_buf, n);
+                                          NGX_AUTH_WEBAUTHN_CRED_F_SIGN_COUNT,
+                                          sizeof(
+                                              NGX_AUTH_WEBAUTHN_CRED_F_SIGN_COUNT)
+                                          - 1, sc_buf, n);
 
     n = snprintf(lu_buf, sizeof(lu_buf), "%lld", (long long) last_used_at);
     ngx_auth_webauthn_credential_num_pair(&pairs[1],
-        NGX_AUTH_WEBAUTHN_CRED_F_LAST_USED_AT,
-        sizeof(NGX_AUTH_WEBAUTHN_CRED_F_LAST_USED_AT) - 1, lu_buf, n);
+                                          NGX_AUTH_WEBAUTHN_CRED_F_LAST_USED_AT,
+                                          sizeof(
+                                              NGX_AUTH_WEBAUTHN_CRED_F_LAST_USED_AT)
+                                          - 1, lu_buf, n);
 
     return ngx_auth_webauthn_redis_hset(redis, &key, pairs, 2);
 }
@@ -401,10 +419,10 @@ ngx_int_t
 ngx_auth_webauthn_credential_delete(ngx_auth_webauthn_redis_t *redis,
     ngx_pool_t *pool, ngx_str_t *prefix, ngx_str_t *credential_id)
 {
-    ngx_str_t                       key;
-    ngx_str_t                       index_key;
-    ngx_int_t                       rc;
-    ngx_auth_webauthn_credential_t  cred;
+    ngx_str_t key;
+    ngx_str_t index_key;
+    ngx_int_t rc;
+    ngx_auth_webauthn_credential_t cred;
 
     if (redis == NULL || pool == NULL || prefix == NULL
         || credential_id == NULL)
@@ -414,13 +432,13 @@ ngx_auth_webauthn_credential_delete(ngx_auth_webauthn_redis_t *redis,
 
     /* Look up user_id first so we can also drop the index entry. */
     rc = ngx_auth_webauthn_credential_get(redis, pool, prefix, credential_id,
-        &cred);
+                                          &cred);
     if (rc != NGX_OK) {
         return rc;  /* NGX_DECLINED (absent) or NGX_ERROR */
     }
 
     if (ngx_auth_webauthn_credential_record_key(pool, prefix, credential_id,
-            &key) != NGX_OK)
+                                                &key) != NGX_OK)
     {
         return NGX_ERROR;
     }
@@ -431,7 +449,8 @@ ngx_auth_webauthn_credential_delete(ngx_auth_webauthn_redis_t *redis,
 
     if (cred.user_id.len > 0) {
         if (ngx_auth_webauthn_credential_index_key(pool, prefix,
-                &cred.user_id, &index_key) != NGX_OK)
+                                                   &cred.user_id,
+                                                   &index_key) != NGX_OK)
         {
             return NGX_ERROR;
         }

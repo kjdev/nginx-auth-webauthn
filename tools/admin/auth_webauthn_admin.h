@@ -34,16 +34,16 @@
  * every subcommand.  pool owns all allocations; log writes to stderr.
  */
 typedef struct {
-    ngx_pool_t  *pool;
-    ngx_log_t   *log;
+    ngx_pool_t *pool;
+    ngx_log_t  *log;
 
-    ngx_str_t    redis_host;
-    int          redis_port;
-    ngx_str_t    redis_password;  /* len 0 skips AUTH */
-    ngx_uint_t   redis_db;
-    ngx_uint_t   redis_timeout_ms;
+    ngx_str_t   redis_host;
+    int         redis_port;
+    ngx_str_t   redis_password;   /* len 0 skips AUTH */
+    ngx_uint_t  redis_db;
+    ngx_uint_t  redis_timeout_ms;
 
-    ngx_str_t    key_prefix;      /* default "webauthn:" */
+    ngx_str_t   key_prefix;       /* default "webauthn:" */
 } auth_webauthn_admin_ctx_t;
 
 

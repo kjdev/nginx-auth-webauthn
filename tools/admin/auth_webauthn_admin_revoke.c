@@ -21,11 +21,11 @@ static void
 ngx_auth_webauthn_admin_revoke_usage(FILE *out)
 {
     fprintf(out,
-        "usage: auth-webauthn-admin revoke --credential-id=<id> [options]\n"
-        "\n"
-        "options:\n"
-        "  --credential-id=<b64url>   credential to delete (required)\n"
-        "  --redis=<host:port> ...    see 'auth-webauthn-admin --help'\n");
+            "usage: auth-webauthn-admin revoke --credential-id=<id> [options]\n"
+            "\n"
+            "options:\n"
+            "  --credential-id=<b64url>   credential to delete (required)\n"
+            "  --redis=<host:port> ...    see 'auth-webauthn-admin --help'\n");
 }
 
 
@@ -33,13 +33,13 @@ int
 auth_webauthn_admin_cmd_revoke(auth_webauthn_admin_ctx_t *ctx, int argc,
     char **argv)
 {
-    int                         c;
-    int                         rc;
-    ngx_str_t                   cid;
-    const char                 *credential_id = NULL;
-    ngx_auth_webauthn_redis_t  *redis;
+    int c;
+    int rc;
+    ngx_str_t cid;
+    const char *credential_id = NULL;
+    ngx_auth_webauthn_redis_t *redis;
 
-    static const struct option  longopts[] = {
+    static const struct option longopts[] = {
         { "credential-id",  required_argument, NULL, OPT_CREDENTIAL_ID },
         { "redis",          required_argument, NULL,
           AUTH_WEBAUTHN_ADMIN_OPT_REDIS },
@@ -91,7 +91,7 @@ auth_webauthn_admin_cmd_revoke(auth_webauthn_admin_ctx_t *ctx, int argc,
     }
 
     rc = ngx_auth_webauthn_credential_delete(redis, ctx->pool,
-        &ctx->key_prefix, &cid);
+                                             &ctx->key_prefix, &cid);
 
     ngx_auth_webauthn_redis_close(redis);
 

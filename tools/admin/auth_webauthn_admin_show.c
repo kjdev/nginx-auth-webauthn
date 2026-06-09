@@ -22,11 +22,11 @@ static void
 ngx_auth_webauthn_admin_show_usage(FILE *out)
 {
     fprintf(out,
-        "usage: auth-webauthn-admin show --credential-id=<id> [options]\n"
-        "\n"
-        "options:\n"
-        "  --credential-id=<b64url>   credential to display (required)\n"
-        "  --redis=<host:port> ...    see 'auth-webauthn-admin --help'\n");
+            "usage: auth-webauthn-admin show --credential-id=<id> [options]\n"
+            "\n"
+            "options:\n"
+            "  --credential-id=<b64url>   credential to display (required)\n"
+            "  --redis=<host:port> ...    see 'auth-webauthn-admin --help'\n");
 }
 
 
@@ -34,11 +34,11 @@ ngx_auth_webauthn_admin_show_usage(FILE *out)
 static void
 ngx_auth_webauthn_admin_aaguid_fmt(const u_char *g, char *buf)
 {
-    static const char  hex[] = "0123456789abcdef";
-    static const int   dashes[] = { 4, 6, 8, 10 };  /* byte indices */
-    size_t             i;
-    size_t             j;
-    size_t             d;
+    static const char hex[] = "0123456789abcdef";
+    static const int dashes[] = { 4, 6, 8, 10 };    /* byte indices */
+    size_t i;
+    size_t j;
+    size_t d;
 
     j = 0;
     d = 0;
@@ -58,16 +58,16 @@ int
 auth_webauthn_admin_cmd_show(auth_webauthn_admin_ctx_t *ctx, int argc,
     char **argv)
 {
-    int                              c;
-    ngx_int_t                        rc;
-    ngx_str_t                        cid;
-    char                             tbuf[24];
-    char                             aaguid_buf[40];
-    const char                      *credential_id = NULL;
-    ngx_auth_webauthn_redis_t       *redis;
-    ngx_auth_webauthn_credential_t   cred;
+    int c;
+    ngx_int_t rc;
+    ngx_str_t cid;
+    char tbuf[24];
+    char aaguid_buf[40];
+    const char *credential_id = NULL;
+    ngx_auth_webauthn_redis_t *redis;
+    ngx_auth_webauthn_credential_t cred;
 
-    static const struct option  longopts[] = {
+    static const struct option longopts[] = {
         { "credential-id",  required_argument, NULL, OPT_CREDENTIAL_ID },
         { "redis",          required_argument, NULL,
           AUTH_WEBAUTHN_ADMIN_OPT_REDIS },
@@ -119,7 +119,7 @@ auth_webauthn_admin_cmd_show(auth_webauthn_admin_ctx_t *ctx, int argc,
     }
 
     rc = ngx_auth_webauthn_credential_get(redis, ctx->pool, &ctx->key_prefix,
-        &cid, &cred);
+                                          &cid, &cred);
 
     ngx_auth_webauthn_redis_close(redis);
 
@@ -134,14 +134,14 @@ auth_webauthn_admin_cmd_show(auth_webauthn_admin_ctx_t *ctx, int argc,
 
     printf("credential_id: %.*s\n", (int) cid.len, cid.data);
     printf("user_id:       %.*s\n",
-        (int) cred.user_id.len, cred.user_id.data);
+           (int) cred.user_id.len, cred.user_id.data);
     printf("alg:           %s (%d)\n",
-        auth_webauthn_admin_alg_name(cred.alg), cred.alg);
+           auth_webauthn_admin_alg_name(cred.alg), cred.alg);
     printf("sign_count:    %lu\n", (unsigned long) cred.sign_count);
     printf("created_at:    %s\n",
-        auth_webauthn_admin_fmt_time(cred.created_at, tbuf, sizeof(tbuf)));
+           auth_webauthn_admin_fmt_time(cred.created_at, tbuf, sizeof(tbuf)));
     printf("last_used_at:  %s\n",
-        auth_webauthn_admin_fmt_time(cred.last_used_at, tbuf, sizeof(tbuf)));
+           auth_webauthn_admin_fmt_time(cred.last_used_at, tbuf, sizeof(tbuf)));
 
     if (cred.has_aaguid) {
         ngx_auth_webauthn_admin_aaguid_fmt(cred.aaguid, aaguid_buf);
@@ -152,13 +152,13 @@ auth_webauthn_admin_cmd_show(auth_webauthn_admin_ctx_t *ctx, int argc,
 
     if (cred.transports.len > 0) {
         printf("transports:    %.*s\n",
-            (int) cred.transports.len, cred.transports.data);
+               (int) cred.transports.len, cred.transports.data);
     } else {
         printf("transports:    -\n");
     }
 
     printf("public_key:    %lu bytes (DER SubjectPublicKeyInfo)\n",
-        (unsigned long) cred.public_key.len);
+           (unsigned long) cred.public_key.len);
 
     return AUTH_WEBAUTHN_ADMIN_EX_OK;
 }
