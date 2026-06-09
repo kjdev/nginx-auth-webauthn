@@ -80,8 +80,6 @@ typedef struct {
     ngx_str_t   auth_status;           /* static literal */
     time_t      jwt_exp;
     ngx_uint_t  has_exp;
-    uint32_t    sign_count;
-    ngx_uint_t  has_sign_count;
 } ngx_http_auth_webauthn_ctx_t;
 
 
@@ -374,8 +372,6 @@ static ngx_http_variable_t ngx_http_auth_webauthn_vars[] = {
       ngx_http_auth_webauthn_variable, 2, NGX_HTTP_VAR_NOCACHEABLE, 0 },
     { ngx_string("webauthn_jwt_exp"), NULL,
       ngx_http_auth_webauthn_variable, 3, NGX_HTTP_VAR_NOCACHEABLE, 0 },
-    { ngx_string("webauthn_sign_count"), NULL,
-      ngx_http_auth_webauthn_variable, 4, NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     ngx_http_null_variable
 };
@@ -421,18 +417,6 @@ ngx_http_auth_webauthn_variable(ngx_http_request_t *r,
         }
         value.data = p;
         value.len = ngx_sprintf(p, "%T", ctx->jwt_exp) - p;
-        break;
-    case 4:
-        if (!ctx->has_sign_count) {
-            v->not_found = 1;
-            return NGX_OK;
-        }
-        p = ngx_pnalloc(r->pool, NGX_INT32_LEN);
-        if (p == NULL) {
-            return NGX_ERROR;
-        }
-        value.data = p;
-        value.len = ngx_sprintf(p, "%uD", ctx->sign_count) - p;
         break;
     default:
         v->not_found = 1;
