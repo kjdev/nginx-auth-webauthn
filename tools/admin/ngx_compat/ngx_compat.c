@@ -12,7 +12,72 @@
 
 #include "ngx_compat.h"
 
+#include <stdarg.h>
 #include <stdlib.h>
+
+
+/*
+ * Emulate nginx's ngx_log_error for the CLI / unit-test builds.  nginx parses
+ * its own format specifiers in ngx_vslprintf; the host vfprintf does not, so
+ * rewrite the numeric size specifiers the shared code actually uses into C99
+ * forms that read each argument with the matching width:
+ *
+ *   %uz (size_t)     -> %zu
+ *   %ui (ngx_uint_t) -> %zu   (uintptr_t, same width as size_t on LP64)
+ *   %z  (ssize_t)    -> %zd
+ *   %i  (ngx_int_t)  -> %zd
+ *
+ * Everything else (%s, %d, %.*s, ...) is already valid for vfprintf and is
+ * copied through untouched.  Pointer/string specifiers like %V consume two
+ * arguments and cannot be expressed by a pure format rewrite; the shared code
+ * does not use them, so they are intentionally unsupported.
+ */
+void
+ngx_compat_log_error(ngx_uint_t level, ngx_log_t *log, ngx_int_t err,
+    const char *fmt, ...)
+{
+    va_list      args;
+    const char  *p;
+    char        *q;
+    char         buf[512];
+
+    (void) err;
+
+    if (log == NULL || level > log->log_level) {
+        return;
+    }
+
+    q = buf;
+    for (p = fmt; *p != '\0' && q < buf + sizeof(buf) - 3; p++) {
+        if (*p != '%') {
+            *q++ = *p;
+            continue;
+        }
+
+        if (p[1] == 'u' && (p[2] == 'z' || p[2] == 'i')) {  /* %uz / %ui */
+            *q++ = '%';
+            *q++ = 'z';
+            *q++ = 'u';
+            p += 2;
+
+        } else if (p[1] == 'z' || p[1] == 'i') {            /* %z / %i */
+            *q++ = '%';
+            *q++ = 'z';
+            *q++ = 'd';
+            p += 1;
+
+        } else {
+            *q++ = *p;  /* '%' itself; a standard specifier follows verbatim */
+        }
+    }
+    *q = '\0';
+
+    fputs("[ngx_compat] ", stderr);
+    va_start(args, fmt);
+    vfprintf(stderr, buf, args);
+    va_end(args);
+    fputc('\n', stderr);
+}
 
 
 ngx_pool_t *

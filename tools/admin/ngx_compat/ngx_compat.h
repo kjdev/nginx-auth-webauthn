@@ -85,17 +85,21 @@ struct ngx_log_s {
     ngx_uint_t  log_level;
 };
 
+/*
+ * The shared sources and nxe-json call ngx_log_error with nginx's own format
+ * specifiers (%uz for size_t, %ui for ngx_uint_t).  fprintf does not know them
+ * and -Wformat=2 flags every call, so route through a helper that rewrites the
+ * format string to C99 forms before handing it to vfprintf.
+ *
+ * No __attribute__((format)) here on purpose: it would make the compiler check
+ * callers against plain printf rules and flag %uz/%ui all over again.
+ */
+void ngx_compat_log_error(ngx_uint_t level, ngx_log_t *log, ngx_int_t err,
+    const char *fmt, ...);
+
 #define ngx_log_error(level, log, err, ...)                                  \
-        do {                                                                 \
-            (void) (err);                                                    \
-            if ((log) != NULL                                                \
-                && (ngx_uint_t) (level) <= (log)->log_level)                 \
-            {                                                                \
-                fprintf(stderr, "[ngx_compat] ");                            \
-                fprintf(stderr, __VA_ARGS__);                                \
-                fprintf(stderr, "\n");                                       \
-            }                                                                \
-        } while (0)
+        ngx_compat_log_error((ngx_uint_t) (level), (log), (ngx_int_t) (err), \
+                             __VA_ARGS__)
 
 
 /* --- ngx_pool_t (malloc-backed) --- */
