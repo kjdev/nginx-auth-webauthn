@@ -30,6 +30,12 @@
 #define NGX_AUTH_WEBAUTHN_JWT_HMAC  0
 #define NGX_AUTH_WEBAUTHN_JWT_ASYM  1
 
+/* userVerification policy: the value is both advertised in the challenge JSON
+ * and, for "required", enforced on the asserted UV flag during verify. */
+#define NGX_AUTH_WEBAUTHN_UV_REQUIRED    0
+#define NGX_AUTH_WEBAUTHN_UV_PREFERRED   1
+#define NGX_AUTH_WEBAUTHN_UV_DISCOURAGED 2
+
 
 typedef struct {
     ngx_str_t                 name;
@@ -42,6 +48,9 @@ typedef struct {
     ngx_str_t    rp_name;
     ngx_array_t *origins;              /* ngx_str_t */
     time_t       challenge_ttl;        /* seconds */
+    ngx_uint_t   user_verification;    /* NGX_AUTH_WEBAUTHN_UV_* */
+    ngx_uint_t   rate_limit_max;       /* 0 disables challenge rate limiting */
+    time_t       rate_limit_window;    /* seconds; the INCR counter's TTL */
 
     ngx_str_t    redis_url;            /* "<host>:<port>", for messages */
     ngx_str_t    redis_host;
@@ -109,6 +118,8 @@ static char *ngx_http_auth_webauthn_conf_set_redis_password(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 static char *ngx_http_auth_webauthn_conf_set_jwt_alg(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
+static char *ngx_http_auth_webauthn_conf_set_rate_limit(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 static char *ngx_http_auth_webauthn_conf_set_challenge_handler(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 static char *ngx_http_auth_webauthn_conf_set_verify_handler(ngx_conf_t *cf,
@@ -130,6 +141,13 @@ static ngx_conf_enum_t ngx_http_auth_webauthn_samesite_enum[] = {
     { ngx_string("strict"), 0 },
     { ngx_string("lax"),    1 },
     { ngx_string("none"),   2 },
+    { ngx_null_string, 0 }
+};
+
+static ngx_conf_enum_t ngx_http_auth_webauthn_uv_enum[] = {
+    { ngx_string("required"),    NGX_AUTH_WEBAUTHN_UV_REQUIRED },
+    { ngx_string("preferred"),   NGX_AUTH_WEBAUTHN_UV_PREFERRED },
+    { ngx_string("discouraged"), NGX_AUTH_WEBAUTHN_UV_DISCOURAGED },
     { ngx_null_string, 0 }
 };
 
@@ -170,6 +188,22 @@ static ngx_command_t ngx_http_auth_webauthn_commands[] = {
       ngx_conf_set_sec_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_auth_webauthn_loc_conf_t, challenge_ttl),
+      NULL },
+
+    { ngx_string("auth_webauthn_user_verification"),
+      NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF |
+      NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_auth_webauthn_loc_conf_t, user_verification),
+      ngx_http_auth_webauthn_uv_enum },
+
+    { ngx_string("auth_webauthn_challenge_rate_limit"),
+      NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF |
+      NGX_CONF_TAKE12,
+      ngx_http_auth_webauthn_conf_set_rate_limit,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
       NULL },
 
     { ngx_string("auth_webauthn_redis"),
@@ -482,6 +516,9 @@ ngx_http_auth_webauthn_create_loc_conf(ngx_conf_t *cf)
      */
     conf->origins = NGX_CONF_UNSET_PTR;
     conf->challenge_ttl = NGX_CONF_UNSET;
+    conf->user_verification = NGX_CONF_UNSET_UINT;
+    conf->rate_limit_max = NGX_CONF_UNSET_UINT;
+    conf->rate_limit_window = NGX_CONF_UNSET;
     conf->redis_port = NGX_CONF_UNSET;
     conf->redis_db = NGX_CONF_UNSET_UINT;
     conf->redis_timeout = NGX_CONF_UNSET_MSEC;
@@ -616,6 +653,11 @@ ngx_http_auth_webauthn_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_str_value(conf->rp_name, prev->rp_name, "");
     ngx_conf_merge_ptr_value(conf->origins, prev->origins, NULL);
     ngx_conf_merge_sec_value(conf->challenge_ttl, prev->challenge_ttl, 60);
+    ngx_conf_merge_uint_value(conf->user_verification, prev->user_verification,
+                              NGX_AUTH_WEBAUTHN_UV_PREFERRED);
+    ngx_conf_merge_uint_value(conf->rate_limit_max, prev->rate_limit_max, 0);
+    ngx_conf_merge_sec_value(conf->rate_limit_window, prev->rate_limit_window,
+                             60);
 
     ngx_conf_merge_str_value(conf->redis_url, prev->redis_url, "");
     ngx_conf_merge_str_value(conf->redis_host, prev->redis_host, "");
@@ -845,6 +887,44 @@ ngx_http_auth_webauthn_conf_set_jwt_alg(ngx_conf_t *cf, ngx_command_t *cmd,
 }
 
 
+/*
+ * auth_webauthn_challenge_rate_limit off | <max> [<window>]
+ *
+ * "off" (or max 0) disables limiting.  Otherwise <max> challenge issues are
+ * allowed per <window> (a time value, default 60s) per client IP.
+ */
+static char *
+ngx_http_auth_webauthn_conf_set_rate_limit(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf)
+{
+    ngx_http_auth_webauthn_loc_conf_t *wlcf = conf;
+    ngx_str_t *value = cf->args->elts;
+    ngx_int_t max;
+    time_t window;
+
+    if (cf->args->nelts == 2 && ngx_strcmp(value[1].data, "off") == 0) {
+        wlcf->rate_limit_max = 0;
+        return NGX_CONF_OK;
+    }
+
+    max = ngx_atoi(value[1].data, value[1].len);
+    if (max == NGX_ERROR || max <= 0) {
+        return "expects \"off\" or a positive <max> count";
+    }
+    wlcf->rate_limit_max = (ngx_uint_t) max;
+
+    if (cf->args->nelts == 3) {
+        window = ngx_parse_time(&value[2], 1);
+        if (window == (time_t) NGX_ERROR || window <= 0) {
+            return "has an invalid <window>";
+        }
+        wlcf->rate_limit_window = window;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
 static char *
 ngx_http_auth_webauthn_conf_set_challenge_handler(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf)
@@ -983,6 +1063,78 @@ ngx_http_auth_webauthn_b64url(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst)
 
 /* === challenge content handler === */
 
+/* userVerification policy values, indexed by NGX_AUTH_WEBAUTHN_UV_*. */
+static ngx_str_t ngx_http_auth_webauthn_uv_names[] = {
+    ngx_string("required"),
+    ngx_string("preferred"),
+    ngx_string("discouraged"),
+};
+
+/* JSON overhead per allowCredentials entry: {"type":"public-key","id":""}, */
+#define NGX_AUTH_WEBAUTHN_ALLOWCRED_OVERHEAD  32
+
+
+/*
+ * Per-client-IP rate limit for challenge issuance, backed by a Redis INCR
+ * counter with a per-window TTL.  Returns NGX_OK when within the quota (or
+ * when the counter could not be evaluated: fail-open, since challenge issuance
+ * already depends on the same Redis), NGX_DECLINED when the quota is exceeded.
+ *
+ * Every request reaching this point is counted, including ones later rejected
+ * at the quota or that go on to fail challenge issuance: this is a deliberate
+ * fixed-window design.  The TTL is set only on the first hit of a window (see
+ * ngx_auth_webauthn_redis_incr_expire), so repeated requests never extend the
+ * lockout -- the window always expires `rate_limit_window` seconds after the
+ * first request.  Counting rejected/failed requests therefore inflates only
+ * the counter integer, never the lockout duration, while keeping the counter
+ * a single atomic INCR with no check-then-act race.
+ */
+static ngx_int_t
+ngx_http_auth_webauthn_rate_limit(ngx_http_request_t *r,
+    ngx_auth_webauthn_redis_t *redis,
+    ngx_http_auth_webauthn_loc_conf_t *wlcf)
+{
+    ngx_str_t key, ip;
+    ngx_int_t count;
+    u_char *p;
+
+    if (wlcf->rate_limit_max == 0) {
+        return NGX_OK;
+    }
+
+    ip = r->connection->addr_text;
+
+    /* {prefix}ratelimit:challenge:{ip} */
+    key.len = wlcf->redis_key_prefix.len
+              + (sizeof("ratelimit:challenge:") - 1) + ip.len;
+    key.data = ngx_pnalloc(r->pool, key.len);
+    if (key.data == NULL) {
+        return NGX_OK;   /* fail-open */
+    }
+    p = ngx_cpymem(key.data, wlcf->redis_key_prefix.data,
+                   wlcf->redis_key_prefix.len);
+    p = ngx_cpymem(p, "ratelimit:challenge:",
+                   sizeof("ratelimit:challenge:") - 1);
+    ngx_memcpy(p, ip.data, ip.len);
+
+    if (ngx_auth_webauthn_redis_incr_expire(redis, &key,
+                                            (ngx_uint_t) wlcf->rate_limit_window,
+                                            &count) != NGX_OK)
+    {
+        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                      "auth_webauthn: rate-limit counter unavailable, "
+                      "allowing challenge");
+        return NGX_OK;   /* fail-open */
+    }
+
+    if ((ngx_uint_t) count > wlcf->rate_limit_max) {
+        return NGX_DECLINED;
+    }
+
+    return NGX_OK;
+}
+
+
 static ngx_int_t
 ngx_http_auth_webauthn_challenge_content(ngx_http_request_t *r)
 {
@@ -990,8 +1142,10 @@ ngx_http_auth_webauthn_challenge_content(ngx_http_request_t *r)
     ngx_auth_webauthn_redis_t *redis = NULL;
     ngx_auth_webauthn_redis_conf_t rconf;
     u_char challenge[NGX_AUTH_WEBAUTHN_CHALLENGE_LEN];
-    ngx_str_t raw, b64, body;
+    ngx_str_t raw, b64, body, uid, index_key, *creds, *uv;
+    ngx_uint_t ncreds = 0, i;
     ngx_int_t rc;
+    size_t size, sum = 0;
     u_char *p;
 
     wlcf = ngx_http_get_module_loc_conf(r, ngx_http_auth_webauthn_module);
@@ -1016,13 +1170,51 @@ ngx_http_auth_webauthn_challenge_content(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
+    if (ngx_http_auth_webauthn_rate_limit(r, redis, wlcf) == NGX_DECLINED) {
+        ngx_auth_webauthn_redis_close(redis);
+        return NGX_HTTP_TOO_MANY_REQUESTS;
+    }
+
     rc = ngx_auth_webauthn_challenge_issue(redis, r->pool,
                                            &wlcf->redis_key_prefix,
                                            wlcf->challenge_ttl, challenge);
-    ngx_auth_webauthn_redis_close(redis);
     if (rc != NGX_OK) {
+        ngx_auth_webauthn_redis_close(redis);
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
+
+    /*
+     * allowCredentials: when a user_id query arg resolves to registered
+     * credentials, list their (base64url) ids so non-discoverable
+     * authenticators can be selected.  An absent, unknown, or empty user_id
+     * all yield [] -- the endpoint never reveals whether a user exists.
+     */
+    if (ngx_http_arg(r, (u_char *) "user_id", 7, &uid) == NGX_OK
+        && uid.len > 0)
+    {
+        index_key.len = wlcf->redis_key_prefix.len
+                        + (sizeof("user:") - 1) + uid.len
+                        + (sizeof(":creds") - 1);
+        index_key.data = ngx_pnalloc(r->pool, index_key.len);
+        if (index_key.data == NULL) {
+            ngx_auth_webauthn_redis_close(redis);
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+        p = ngx_cpymem(index_key.data, wlcf->redis_key_prefix.data,
+                       wlcf->redis_key_prefix.len);
+        p = ngx_cpymem(p, "user:", sizeof("user:") - 1);
+        p = ngx_cpymem(p, uid.data, uid.len);
+        ngx_memcpy(p, ":creds", sizeof(":creds") - 1);
+
+        if (ngx_auth_webauthn_redis_smembers(redis, r->pool, &index_key,
+                                             &creds, &ncreds) != NGX_OK)
+        {
+            ngx_auth_webauthn_redis_close(redis);
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+    }
+
+    ngx_auth_webauthn_redis_close(redis);
 
     raw.data = challenge;
     raw.len = NGX_AUTH_WEBAUTHN_CHALLENGE_LEN;
@@ -1030,15 +1222,30 @@ ngx_http_auth_webauthn_challenge_content(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    body.data = ngx_pnalloc(r->pool, 160 + b64.len + wlcf->rp_id.len);
+    for (i = 0; i < ncreds; i++) {
+        sum += creds[i].len;
+    }
+
+    uv = &ngx_http_auth_webauthn_uv_names[wlcf->user_verification];
+
+    size = 160 + b64.len + wlcf->rp_id.len + uv->len
+           + ncreds * NGX_AUTH_WEBAUTHN_ALLOWCRED_OVERHEAD + sum;
+    body.data = ngx_pnalloc(r->pool, size);
     if (body.data == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
+
     p = ngx_sprintf(body.data,
                     "{\"challenge\":\"%V\",\"rpId\":\"%V\",\"timeout\":%T,"
-                    "\"userVerification\":\"preferred\","
-                    "\"allowCredentials\":[]}",
-                    &b64, &wlcf->rp_id, (time_t) (wlcf->challenge_ttl * 1000));
+                    "\"userVerification\":\"%V\",\"allowCredentials\":[",
+                    &b64, &wlcf->rp_id, (time_t) (wlcf->challenge_ttl * 1000),
+                    uv);
+    for (i = 0; i < ncreds; i++) {
+        p = ngx_sprintf(p, "%s{\"type\":\"public-key\",\"id\":\"%V\"}",
+                        i == 0 ? "" : ",", &creds[i]);
+    }
+    *p++ = ']';
+    *p++ = '}';
     body.len = (size_t) (p - body.data);
 
     return ngx_http_auth_webauthn_send_json(r, NGX_HTTP_OK, &body);
@@ -1267,7 +1474,8 @@ ngx_http_auth_webauthn_verify_done(ngx_http_request_t *r)
     policy.expected_challenge = challenge_raw;
     policy.allowed_origins = wlcf->origins->elts;
     policy.norigins = wlcf->origins->nelts;
-    policy.require_uv = 0;
+    policy.require_uv =
+        (wlcf->user_verification == NGX_AUTH_WEBAUTHN_UV_REQUIRED);
     policy.clone_detection = wlcf->clone_detection;
 
     ngx_memzero(&result, sizeof(result));

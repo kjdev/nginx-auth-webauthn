@@ -95,6 +95,17 @@ ngx_int_t ngx_auth_webauthn_redis_expire(ngx_auth_webauthn_redis_t *redis,
     ngx_str_t *key, ngx_uint_t seconds);
 
 /*
+ * INCR key and ensure it carries a TTL of `seconds`, atomically: the TTL is
+ * set on the first hit of a fresh counter and on any counter found without an
+ * expiry (so a previously orphaned key heals instead of locking the key out
+ * forever).  INCR and EXPIRE run in one server-side script, so a dropped
+ * connection cannot leave the counter without a TTL.  *value receives the
+ * post-increment count.  Returns NGX_OK / NGX_ERROR.
+ */
+ngx_int_t ngx_auth_webauthn_redis_incr_expire(ngx_auth_webauthn_redis_t *redis,
+    ngx_str_t *key, ngx_uint_t seconds, ngx_int_t *value);
+
+/*
  * SET key value EX seconds.  value may carry raw bytes (binary-safe).  Returns
  * NGX_OK on success, NGX_ERROR on a protocol / connection error.
  */

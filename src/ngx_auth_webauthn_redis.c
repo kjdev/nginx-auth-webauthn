@@ -536,6 +536,68 @@ ngx_auth_webauthn_redis_expire(ngx_auth_webauthn_redis_t *redis, ngx_str_t *key,
 
 
 ngx_int_t
+ngx_auth_webauthn_redis_incr_expire(ngx_auth_webauthn_redis_t *redis,
+    ngx_str_t *key, ngx_uint_t seconds, ngx_int_t *value)
+{
+    /*
+     * INCR the counter and make sure it carries a TTL: set it on the first hit
+     * of a fresh key, and -- defensively -- on any key found without an expiry
+     * (TTL < 0), which would otherwise live forever and lock the IP out.
+     * Running INCR and EXPIRE in one server-side script keeps them atomic, so a
+     * connection dropped mid-operation can never leave a counter without a TTL.
+     */
+    static const char script[] =
+        "local c = redis.call('INCR', KEYS[1])\n"
+        "if c == 1 or redis.call('TTL', KEYS[1]) < 0 then\n"
+        "  redis.call('EXPIRE', KEYS[1], ARGV[1])\n"
+        "end\n"
+        "return c";
+    char numbuf[NGX_AUTH_WEBAUTHN_REDIS_NUMBUF];
+    int n;
+    redisReply *reply;
+    const char *argv[5];
+    size_t argvlen[5];
+
+    if (redis == NULL || redis->ctx == NULL || key == NULL || value == NULL) {
+        return NGX_ERROR;
+    }
+
+    *value = 0;
+
+    n = snprintf(numbuf, sizeof(numbuf), "%lu", (unsigned long) seconds);
+    if (n < 0 || (size_t) n >= sizeof(numbuf)) {
+        return NGX_ERROR;
+    }
+
+    /* EVAL script 1 key seconds */
+    argv[0] = "EVAL";
+    argvlen[0] = sizeof("EVAL") - 1;
+    argv[1] = script;
+    argvlen[1] = sizeof(script) - 1;
+    argv[2] = "1";
+    argvlen[2] = sizeof("1") - 1;
+    argv[3] = (const char *) key->data;
+    argvlen[3] = key->len;
+    argv[4] = numbuf;
+    argvlen[4] = (size_t) n;
+
+    reply = ngx_auth_webauthn_redis_exec(redis, 5, argv, argvlen);
+    if (reply == NULL || reply->type != REDIS_REPLY_INTEGER) {
+        if (reply != NULL) {
+            freeReplyObject(reply);
+        }
+        return NGX_ERROR;
+    }
+
+    *value = (ngx_int_t) reply->integer;
+
+    freeReplyObject(reply);
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_auth_webauthn_redis_set_ex(ngx_auth_webauthn_redis_t *redis, ngx_str_t *key,
     ngx_str_t *value, ngx_uint_t seconds)
 {

@@ -87,7 +87,21 @@
 
     setStatus('Fetching a challenge...');
     try {
-      const chResp = await fetch(CHALLENGE_URL, {
+      /*
+       * A user_id is optional: when supplied the server returns that user's
+       * allowCredentials, which lets non-discoverable authenticators be
+       * selected. Without it the flow relies on discoverable credentials.
+       */
+      const userIdEl = document.getElementById('user-id');
+      const userId = userIdEl && userIdEl.value.trim();
+      let challengeUrl = CHALLENGE_URL;
+      if (userId) {
+        challengeUrl +=
+          (CHALLENGE_URL.indexOf('?') === -1 ? '?' : '&') +
+          'user_id=' + encodeURIComponent(userId);
+      }
+
+      const chResp = await fetch(challengeUrl, {
         credentials: 'same-origin',
       });
       if (!chResp.ok) {
