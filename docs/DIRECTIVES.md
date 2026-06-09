@@ -16,6 +16,8 @@ See [EXAMPLES.md](EXAMPLES.md) for complete configuration examples. The minimal 
 | [auth_webauthn_rp_name](#auth_webauthn_rp_name) | http, server, location | RP display name (currently unused) |
 | [auth_webauthn_origin](#auth_webauthn_origin) | http, server, location | Allowed origins |
 | [auth_webauthn_challenge_ttl](#auth_webauthn_challenge_ttl) | http, server, location | Challenge expiration |
+| [auth_webauthn_user_verification](#auth_webauthn_user_verification) | http, server, location | userVerification policy |
+| [auth_webauthn_challenge_rate_limit](#auth_webauthn_challenge_rate_limit) | http, server, location | Challenge issuance rate limit |
 | [auth_webauthn_redis](#auth_webauthn_redis) | http, server, location | Redis server |
 | [auth_webauthn_redis_password](#auth_webauthn_redis_password) | http, server, location | Redis AUTH |
 | [auth_webauthn_redis_db](#auth_webauthn_redis_db) | http, server, location | Redis DB number |
@@ -117,6 +119,38 @@ Context: http, server, location
 ```
 
 The expiration of an issued challenge. This value is also reflected in the `timeout` (milliseconds) of the `/webauthn/challenge` response. Recommended range 60–300 seconds.
+
+### auth_webauthn_user_verification
+
+```
+Syntax:  auth_webauthn_user_verification required | preferred | discouraged;
+Default: auth_webauthn_user_verification preferred;
+Context: http, server, location
+```
+
+The WebAuthn userVerification policy. It is reflected verbatim in the `userVerification` field of the `/webauthn/challenge` response.
+
+- `required` — User verification (biometrics, PIN, etc.) is mandatory. `/webauthn/verify` **rejects with 401 when the asserted UV flag is not set**.
+- `preferred` — Request UV when possible, but accept assertions without it (no enforcement on verify).
+- `discouraged` — Do not request UV.
+
+Only `required` enforces the UV flag on verify; the others merely advertise the preference in the challenge response. The UP (User Present) flag is always required regardless of policy.
+
+### auth_webauthn_challenge_rate_limit
+
+```
+Syntax:  auth_webauthn_challenge_rate_limit off | <max> [<window>];
+Default: auth_webauthn_challenge_rate_limit off;
+Context: http, server, location
+```
+
+Limits `/webauthn/challenge` issuance per client IP. Allows up to `<max>` requests per `<window>` (a time value, default 60s); exceeding it returns `429 Too Many Requests`. `off` (or the default) disables it.
+
+```nginx
+auth_webauthn_challenge_rate_limit 10 60s;   # up to 10 per 60 seconds
+```
+
+The counter is held in Redis (`{prefix}ratelimit:challenge:{ip}`, INCR + EXPIRE) so it is shared across nodes. Being a fixed-window counter, it may allow a burst of up to 2×`max` across a window boundary. If the counter cannot be read, issuance proceeds (fail-open).
 
 ### auth_webauthn_redis
 
@@ -314,9 +348,19 @@ Makes this location act as the `/webauthn/challenge` endpoint (challenge issuanc
 }
 ```
 
-`userVerification` is fixed to `preferred`, and `allowCredentials` is always an empty array (it presupposes discoverable credentials / resident keys). `timeout` is `auth_webauthn_challenge_ttl` converted to milliseconds.
+`userVerification` reflects the [auth_webauthn_user_verification](#auth_webauthn_user_verification) value. `timeout` is `auth_webauthn_challenge_ttl` converted to milliseconds.
 
-Because the issued challenge is stored in Redis (`{prefix}chal:{raw}`, `SET ... EX`), the `auth_webauthn_redis` setting is also required in this location. If the Redis connection fails, it returns 500.
+`allowCredentials` is an empty array by default (presupposing discoverable credentials / resident keys). Adding the query `?user_id=<id>` returns that user's registered credential ids:
+
+```json
+"allowCredentials": [
+  { "type": "public-key", "id": "<base64url-credential-id>" }
+]
+```
+
+This lets non-discoverable authenticators be selected. An unknown, empty, or absent `user_id` all return an empty array, so the endpoint never reveals whether a user exists (enumeration defense).
+
+Because the issued challenge is stored in Redis (`{prefix}chal:{raw}`, `SET ... EX`), the `auth_webauthn_redis` setting is also required in this location. If the Redis connection fails, it returns 500. Use [auth_webauthn_challenge_rate_limit](#auth_webauthn_challenge_rate_limit) to cap issuance per IP.
 
 ### auth_webauthn_verify_handler
 

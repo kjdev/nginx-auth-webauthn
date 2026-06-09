@@ -96,6 +96,20 @@ auth_webauthn_jwt_secret_file /etc/nginx/webauthn_es256.pem;  # PEM private key
 
 The private key is EC P-256. NGINX derives the public key from the private key and verifies on its own.
 
+## Pattern 6: Requiring UV and rate-limiting challenges
+
+To require UV (biometrics / PIN) and throttle challenge issuance per IP:
+
+```nginx
+auth_webauthn_user_verification    required;   # assertions without UV get 401 at verify
+auth_webauthn_challenge_rate_limit 10 60s;     # up to 10 per 60 seconds
+
+location = /webauthn/challenge { auth_webauthn_challenge_handler on; }
+location = /webauthn/verify    { auth_webauthn_verify_handler on; }
+```
+
+`required` is reflected in the challenge response's `userVerification` and also rejects assertions without the UV flag at `/webauthn/verify` with 401. The rate-limit counter lives in Redis, so it is shared across nodes.
+
 ## Wire formats
 
 ### `GET /webauthn/challenge`
@@ -112,7 +126,23 @@ Response (`application/json`):
 }
 ```
 
-The client passes this to `navigator.credentials.get({ publicKey: ... })`. Because `allowCredentials` is empty, discoverable credentials (resident keys) are presupposed.
+The client passes this to `navigator.credentials.get({ publicKey: ... })`. Because `allowCredentials` is empty, discoverable credentials (resident keys) are presupposed. `userVerification` reflects the `auth_webauthn_user_verification` value.
+
+When the user can be identified, fetch with `?user_id=<id>` to receive that user's registered credential ids, which lets non-discoverable authenticators be selected:
+
+```json
+{
+  "challenge": "rB2f...<base64url-32B>",
+  "rpId": "example.com",
+  "timeout": 60000,
+  "userVerification": "preferred",
+  "allowCredentials": [
+    { "type": "public-key", "id": "<base64url credential id>" }
+  ]
+}
+```
+
+An unknown, empty, or absent `user_id` all return an empty array, so the user's existence is not leaked.
 
 ### `POST /webauthn/verify`
 

@@ -75,10 +75,10 @@ On failure of `/webauthn/verify`, regardless of cause (credential absent / signa
 
 The following are implementation limitations of the current version. Be aware of them in operation.
 
-- **User Verification (UV) is not required**: UP (User Present) is required, but the result of UV (user verification via biometrics / PIN) is not enforced on the server side. The `userVerification` of the challenge response indicates `preferred`, but Assertions where UV was not performed also pass verification. If you need multi-factor-equivalent assurance, operate with this limitation in mind
+- **User Verification (UV) is not enforced by default**: UP (User Present) is always required. UV (user verification via biometrics / PIN) can be enforced at `/webauthn/verify` by setting `auth_webauthn_user_verification required` (assertions without the UV flag get 401). With the default `preferred`, the challenge response merely advertises `preferred` and assertions without UV still pass. Set `required` if you need multi-factor-equivalent assurance
 - **JWT `iss` / `aud` are not verified**: at issuance, `iss=nginx-webauthn` / `aud=<rp_id>` are set, but the protection gate verifies only the signature and `exp`
 - **Attestation only at registration**: only `none` or `packed` self-attestation is supported. Certificate-based attestation (`tpm` / `apple` / `fido-u2f`, etc.) is not supported
-- **`allowCredentials` is always empty**: it presupposes discoverable credentials (resident keys)
+- **`allowCredentials` is empty by default**: it presupposes discoverable credentials (resident keys). Fetching the challenge with `?user_id=<id>` returns that user's credential ids (an unknown user still gets an empty array, so existence is not leaked)
 
 ## Related documents
 
