@@ -152,6 +152,8 @@ auth_webauthn_challenge_rate_limit 10 60s;   # up to 10 per 60 seconds
 
 The counter is held in Redis (`{prefix}ratelimit:challenge:{ip}`, INCR + EXPIRE) so it is shared across nodes. Being a fixed-window counter, it may allow a burst of up to 2×`max` across a window boundary. If the counter cannot be read, issuance proceeds (fail-open).
 
+The `{ip}` in the key is the TCP peer address (equivalent to `$remote_addr`). When this module runs at the edge that is the real client IP, but behind a CDN / load balancer all clients collapse to the LB's single IP, effectively globalizing the limit (one client exhausting the quota locks out everyone). When deployed behind a proxy, also configure the `realip` module (`set_real_ip_from` + `real_ip_header`). `realip` rewrites `$remote_addr` to the real client IP and this module reads that value, so per-client limiting works with no extra configuration.
+
 ### auth_webauthn_redis
 
 ```
