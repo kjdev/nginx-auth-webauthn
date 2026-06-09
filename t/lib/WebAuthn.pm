@@ -109,6 +109,7 @@ sub assertion_body {
     push @args, '--bad-origin'                   if $opt{bad_origin};
     push @args, '--bad-rpid'                     if $opt{bad_rpid};
     push @args, '--tamper-sig'                   if $opt{tamper_sig};
+    push @args, '--no-uv'                        if $opt{no_uv};
 
     open(my $p, '-|', @args) or die "assertion spawn failed: $!";
     local $/;

@@ -82,3 +82,41 @@ Content-Type: application/json
 WebAuthn::verify_request(key => $main::KEY, cid => $main::CID,
                          challenge => WebAuthn::rand_challenge())
 --- error_code: 401
+
+
+
+=== verify: userVerification required rejects an assertion without the UV flag
+--- config
+    include $TEST_NGINX_CONF_DIR/server.conf;
+    auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
+    auth_webauthn_user_verification required;
+    location = /webauthn/challenge { auth_webauthn_challenge_handler on; }
+    location = /webauthn/verify   { auth_webauthn_verify_handler on; }
+--- init
+    system("redis-cli -p 6379 flushall >/dev/null 2>&1");
+    WebAuthn::seed(user => "alice", cid => $main::CID, key => $main::KEY);
+--- more_headers
+Content-Type: application/json
+--- request_eval
+WebAuthn::verify_request(key => $main::KEY, cid => $main::CID, no_uv => 1)
+--- error_code: 401
+--- response_body_like: "ok":false,"error":"E_ASSERTION"
+
+
+
+=== verify: userVerification required accepts an assertion with the UV flag
+--- config
+    include $TEST_NGINX_CONF_DIR/server.conf;
+    auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
+    auth_webauthn_user_verification required;
+    location = /webauthn/challenge { auth_webauthn_challenge_handler on; }
+    location = /webauthn/verify   { auth_webauthn_verify_handler on; }
+--- init
+    system("redis-cli -p 6379 flushall >/dev/null 2>&1");
+    WebAuthn::seed(user => "alice", cid => $main::CID, key => $main::KEY);
+--- more_headers
+Content-Type: application/json
+--- request_eval
+WebAuthn::verify_request(key => $main::KEY, cid => $main::CID, sign_count => 7)
+--- error_code: 200
+--- response_body_like: ^\{"ok":true,"user_id":"alice","exp":\d+\}$

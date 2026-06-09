@@ -194,7 +194,8 @@ def cmd_assertion(args) -> None:
     rp_id = "attacker.example" if args.bad_rpid else args.rp_id
 
     cdj = client_data_json(args.type, args.challenge, origin)
-    ad = auth_data(rp_id, FLAG_UP | FLAG_UV, args.sign_count)
+    flags = FLAG_UP if args.no_uv else FLAG_UP | FLAG_UV
+    ad = auth_data(rp_id, flags, args.sign_count)
 
     signed = ad + hashlib.sha256(cdj).digest()
     signature = key.sign(signed, ec.ECDSA(hashes.SHA256()))
@@ -248,6 +249,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--bad-origin", action="store_true")
     p.add_argument("--bad-rpid", action="store_true")
     p.add_argument("--tamper-sig", action="store_true")
+    p.add_argument("--no-uv", action="store_true",
+                   help="clear the UV flag (for userVerification tests)")
     p.set_defaults(func=cmd_assertion)
 
     return parser

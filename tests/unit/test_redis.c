@@ -142,6 +142,25 @@ run_redis_tests(void)
         &nmembers);
     CHECK(rc == NGX_OK && nmembers == 1, "redis smembers after srem: one");
 
+    /* INCR+EXPIRE: a fresh counter returns 1, 2, 3 on successive hits. */
+    {
+        ngx_str_t  ctr = ngx_string("webauthn:test:redis:counter");
+        ngx_int_t  v = 0;
+
+        (void) ngx_auth_webauthn_redis_del(redis, &ctr);
+
+        rc = ngx_auth_webauthn_redis_incr_expire(redis, &ctr, 60, &v);
+        CHECK(rc == NGX_OK && v == 1, "redis incr_expire: fresh counter is 1");
+
+        rc = ngx_auth_webauthn_redis_incr_expire(redis, &ctr, 60, &v);
+        CHECK(rc == NGX_OK && v == 2, "redis incr_expire: second hit is 2");
+
+        rc = ngx_auth_webauthn_redis_incr_expire(redis, &ctr, 60, &v);
+        CHECK(rc == NGX_OK && v == 3, "redis incr_expire: third hit is 3");
+
+        (void) ngx_auth_webauthn_redis_del(redis, &ctr);
+    }
+
     /* EXPIRE then DEL. */
     rc = ngx_auth_webauthn_redis_expire(redis, &key, 60);
     CHECK(rc == NGX_OK, "redis expire: NGX_OK");
