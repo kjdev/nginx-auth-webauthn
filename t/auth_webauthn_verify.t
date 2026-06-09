@@ -20,8 +20,6 @@ run_tests();
 __DATA__
 
 === verify: valid Assertion yields 200 + Set-Cookie + user
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
@@ -42,8 +40,6 @@ Set-Cookie: webauthn_session=[A-Za-z0-9_.-]+; HttpOnly; SameSite=Strict; Path=/;
 
 
 === verify: empty body is 401
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
@@ -57,8 +53,6 @@ POST /webauthn/verify
 
 
 === verify: malformed JSON is 401
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
@@ -74,8 +68,6 @@ this-is-not-json
 
 
 === verify: unissued challenge is 401
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;

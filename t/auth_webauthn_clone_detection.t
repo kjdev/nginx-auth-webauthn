@@ -20,8 +20,6 @@ run_tests();
 __DATA__
 
 === clone strict: sign_count advance is 200 (stored 0 -> 5)
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
@@ -40,8 +38,6 @@ WebAuthn::verify_request(key => $main::KEY, cid => $main::CID, sign_count => 5)
 
 
 === clone strict: sign_count regression is 401 (stored 5 > 3, no flushall)
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
@@ -57,8 +53,6 @@ WebAuthn::verify_request(key => $main::KEY, cid => $main::CID, sign_count => 3)
 
 
 === clone lax: advance is 200 (stored 0 -> 5)
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
@@ -77,8 +71,6 @@ WebAuthn::verify_request(key => $main::KEY, cid => $main::CID, sign_count => 5)
 
 
 === clone lax: regression is still 200 (warning only, no flushall)
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;

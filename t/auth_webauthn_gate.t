@@ -8,8 +8,6 @@ run_tests();
 __DATA__
 
 === gate: valid JWT Cookie yields 200 + exposed user variables
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
@@ -33,8 +31,6 @@ X-WebAuthn-User: alice
 
 
 === gate: webauthn_session is retrievable even when other cookies precede it (200)
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
@@ -58,8 +54,6 @@ X-WebAuthn-User: alice
 
 
 === gate: webauthn_session is retrievable even when other cookies follow it (200)
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
@@ -83,8 +77,6 @@ X-WebAuthn-User: alice
 
 
 === gate: no Cookie is 401
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
@@ -102,8 +94,6 @@ GET /protected.txt
 
 
 === gate: expired JWT is 401
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
@@ -123,8 +113,6 @@ GET /protected.txt
 
 
 === gate: alg=none JWT is 401
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
@@ -144,8 +132,6 @@ GET /protected.txt
 
 
 === gate: tampered-signature JWT is 401
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
@@ -165,8 +151,6 @@ GET /protected.txt
 
 
 === gate: unauthenticated with signin_url set is a 302 redirect
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;

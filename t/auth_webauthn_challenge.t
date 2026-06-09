@@ -3,13 +3,22 @@ use Test::Nginx::Socket 'no_plan';
 use WebAuthn;
 
 no_shuffle();
+
+# The challenge handler stores the nonce in Redis (SET ... EX), so the whole
+# file needs a live Redis. TAP-skip when it is absent. Avoid plan(skip_all),
+# which conflicts with no_plan; emit the TAP skip-all line directly and exit
+# via POSIX::_exit to avoid END (a double plan).
+unless (WebAuthn::redis_up()) {
+    print "1..0 # SKIP Redis 127.0.0.1:6379 not available\n";
+    require POSIX;
+    POSIX::_exit(0);
+}
+
 run_tests();
 
 __DATA__
 
 === challenge: 200 and JSON shape
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     location = /webauthn/challenge {
@@ -25,8 +34,6 @@ Content-Type: application/json
 
 
 === challenge: challenge_ttl is reflected in timeout
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_challenge_ttl 30;

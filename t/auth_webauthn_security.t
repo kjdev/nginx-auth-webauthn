@@ -20,8 +20,6 @@ run_tests();
 __DATA__
 
 === security: origin mismatch is 401
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
@@ -39,8 +37,6 @@ WebAuthn::verify_request(key => $main::KEY, cid => $main::CID, bad_origin => 1)
 
 
 === security: rpIdHash mismatch is 401
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
@@ -58,8 +54,6 @@ WebAuthn::verify_request(key => $main::KEY, cid => $main::CID, bad_rpid => 1)
 
 
 === security: tampered signature is 401
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
@@ -77,8 +71,6 @@ WebAuthn::verify_request(key => $main::KEY, cid => $main::CID, tamper_sig => 1)
 
 
 === security: reusing a challenge makes the second attempt 401
---- http_config
-    auth_webauthn_challenge_zone webauthn:1m;
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
     auth_webauthn_jwt_secret_file $TEST_NGINX_CONF_DIR/jwt.key;
