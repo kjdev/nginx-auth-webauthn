@@ -532,3 +532,86 @@ ngx_auth_webauthn_redis_expire(ngx_auth_webauthn_redis_t *redis, ngx_str_t *key,
 
     return rc;
 }
+
+
+ngx_int_t
+ngx_auth_webauthn_redis_set_ex(ngx_auth_webauthn_redis_t *redis, ngx_str_t *key,
+    ngx_str_t *value, ngx_uint_t seconds)
+{
+    char          numbuf[NGX_AUTH_WEBAUTHN_REDIS_NUMBUF];
+    int           n;
+    ngx_int_t     rc;
+    redisReply   *reply;
+    const char   *argv[5];
+    size_t        argvlen[5];
+
+    if (redis == NULL || redis->ctx == NULL || key == NULL || value == NULL) {
+        return NGX_ERROR;
+    }
+
+    n = snprintf(numbuf, sizeof(numbuf), "%lu", (unsigned long) seconds);
+    if (n < 0 || (size_t) n >= sizeof(numbuf)) {
+        return NGX_ERROR;
+    }
+
+    /* SET key value EX seconds */
+    argv[0] = "SET";
+    argvlen[0] = sizeof("SET") - 1;
+    argv[1] = (const char *) key->data;
+    argvlen[1] = key->len;
+    argv[2] = (const char *) value->data;
+    argvlen[2] = value->len;
+    argv[3] = "EX";
+    argvlen[3] = sizeof("EX") - 1;
+    argv[4] = numbuf;
+    argvlen[4] = (size_t) n;
+
+    reply = ngx_auth_webauthn_redis_exec(redis, 5, argv, argvlen);
+    rc = (reply != NULL && reply->type != REDIS_REPLY_ERROR)
+         ? NGX_OK : NGX_ERROR;
+
+    if (reply != NULL) {
+        freeReplyObject(reply);
+    }
+
+    return rc;
+}
+
+
+ngx_int_t
+ngx_auth_webauthn_redis_getdel(ngx_auth_webauthn_redis_t *redis, ngx_str_t *key,
+    ngx_uint_t *found)
+{
+    redisReply   *reply;
+    const char   *argv[2];
+    size_t        argvlen[2];
+
+    if (redis == NULL || redis->ctx == NULL || key == NULL || found == NULL) {
+        return NGX_ERROR;
+    }
+
+    *found = 0;
+
+    argv[0] = "GETDEL";
+    argvlen[0] = sizeof("GETDEL") - 1;
+    argv[1] = (const char *) key->data;
+    argvlen[1] = key->len;
+
+    reply = ngx_auth_webauthn_redis_exec(redis, 2, argv, argvlen);
+    if (reply == NULL || reply->type == REDIS_REPLY_ERROR) {
+        if (reply != NULL) {
+            freeReplyObject(reply);
+        }
+        return NGX_ERROR;
+    }
+
+    /* A present key returns its (string) value; an absent / expired key
+     * returns nil. */
+    if (reply->type == REDIS_REPLY_STRING) {
+        *found = 1;
+    }
+
+    freeReplyObject(reply);
+
+    return NGX_OK;
+}

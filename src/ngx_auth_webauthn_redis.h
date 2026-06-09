@@ -94,4 +94,21 @@ ngx_int_t ngx_auth_webauthn_redis_smembers(ngx_auth_webauthn_redis_t *redis,
 ngx_int_t ngx_auth_webauthn_redis_expire(ngx_auth_webauthn_redis_t *redis,
     ngx_str_t *key, ngx_uint_t seconds);
 
+/*
+ * SET key value EX seconds.  value may carry raw bytes (binary-safe).  Returns
+ * NGX_OK on success, NGX_ERROR on a protocol / connection error.
+ */
+ngx_int_t ngx_auth_webauthn_redis_set_ex(ngx_auth_webauthn_redis_t *redis,
+    ngx_str_t *key, ngx_str_t *value, ngx_uint_t seconds);
+
+/*
+ * GETDEL key (Redis 6.2+): atomically read and delete the key.  *found is set
+ * to 1 when the key existed (and is now gone) and 0 when it was absent or
+ * already expired.  The deleted value is not returned: callers only need the
+ * existence flag.  Returns NGX_OK on success, NGX_ERROR on a protocol /
+ * connection error.
+ */
+ngx_int_t ngx_auth_webauthn_redis_getdel(ngx_auth_webauthn_redis_t *redis,
+    ngx_str_t *key, ngx_uint_t *found);
+
 #endif /* NGX_AUTH_WEBAUTHN_REDIS_H */

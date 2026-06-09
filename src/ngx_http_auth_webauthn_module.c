@@ -42,7 +42,6 @@ typedef struct {
     ngx_str_t       rp_name;
     ngx_array_t    *origins;           /* ngx_str_t */
     time_t          challenge_ttl;     /* seconds */
-    ngx_shm_zone_t *challenge_zone;
 
     ngx_str_t       redis_url;         /* "<host>:<port>", for messages */
     ngx_str_t       redis_host;
@@ -110,8 +109,6 @@ static char *ngx_http_auth_webauthn_conf_set_redis_password(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 static char *ngx_http_auth_webauthn_conf_set_jwt_alg(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
-static char *ngx_http_auth_webauthn_conf_set_zone(ngx_conf_t *cf,
-    ngx_command_t *cmd, void *conf);
 static char *ngx_http_auth_webauthn_conf_set_challenge_handler(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 static char *ngx_http_auth_webauthn_conf_set_verify_handler(ngx_conf_t *cf,
@@ -173,13 +170,6 @@ static ngx_command_t ngx_http_auth_webauthn_commands[] = {
       ngx_conf_set_sec_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_auth_webauthn_loc_conf_t, challenge_ttl),
-      NULL },
-
-    { ngx_string("auth_webauthn_challenge_zone"),
-      NGX_HTTP_MAIN_CONF | NGX_CONF_TAKE1,
-      ngx_http_auth_webauthn_conf_set_zone,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      0,
       NULL },
 
     { ngx_string("auth_webauthn_redis"),
@@ -492,7 +482,6 @@ ngx_http_auth_webauthn_create_loc_conf(ngx_conf_t *cf)
      */
     conf->origins = NGX_CONF_UNSET_PTR;
     conf->challenge_ttl = NGX_CONF_UNSET;
-    conf->challenge_zone = NGX_CONF_UNSET_PTR;
     conf->redis_port = NGX_CONF_UNSET;
     conf->redis_db = NGX_CONF_UNSET_UINT;
     conf->redis_timeout = NGX_CONF_UNSET_MSEC;
@@ -627,7 +616,6 @@ ngx_http_auth_webauthn_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_str_value(conf->rp_name, prev->rp_name, "");
     ngx_conf_merge_ptr_value(conf->origins, prev->origins, NULL);
     ngx_conf_merge_sec_value(conf->challenge_ttl, prev->challenge_ttl, 60);
-    ngx_conf_merge_ptr_value(conf->challenge_zone, prev->challenge_zone, NULL);
 
     ngx_conf_merge_str_value(conf->redis_url, prev->redis_url, "");
     ngx_conf_merge_str_value(conf->redis_host, prev->redis_host, "");
@@ -858,57 +846,6 @@ ngx_http_auth_webauthn_conf_set_jwt_alg(ngx_conf_t *cf, ngx_command_t *cmd,
 
 
 static char *
-ngx_http_auth_webauthn_conf_set_zone(ngx_conf_t *cf, ngx_command_t *cmd,
-    void *conf)
-{
-    ngx_http_auth_webauthn_loc_conf_t *wlcf = conf;
-    ngx_str_t *value, name, s;
-    ngx_shm_zone_t *shm_zone;
-    ngx_auth_webauthn_challenge_ctx_t *ctx;
-    u_char *colon;
-    ssize_t size;
-
-    value = cf->args->elts;
-
-    colon = (u_char *) ngx_strlchr(value[1].data,
-                                   value[1].data + value[1].len, ':');
-    if (colon == NULL) {
-        return "expects <name>:<size>";
-    }
-
-    name.data = value[1].data;
-    name.len = (size_t) (colon - value[1].data);
-
-    s.data = colon + 1;
-    s.len = value[1].len - name.len - 1;
-    size = ngx_parse_size(&s);
-    if (size == NGX_ERROR || size < (ssize_t) (8 * ngx_pagesize)) {
-        return "has an invalid or too small size";
-    }
-
-    ctx = ngx_pcalloc(cf->pool, sizeof(ngx_auth_webauthn_challenge_ctx_t));
-    if (ctx == NULL) {
-        return NGX_CONF_ERROR;
-    }
-
-    shm_zone = ngx_shared_memory_add(cf, &name, size,
-                                     &ngx_http_auth_webauthn_module);
-    if (shm_zone == NULL) {
-        return NGX_CONF_ERROR;
-    }
-    if (shm_zone->data) {
-        return "is duplicate";
-    }
-    shm_zone->init = ngx_auth_webauthn_challenge_init_zone;
-    shm_zone->data = ctx;
-
-    wlcf->challenge_zone = shm_zone;
-
-    return NGX_CONF_OK;
-}
-
-
-static char *
 ngx_http_auth_webauthn_conf_set_challenge_handler(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf)
 {
@@ -1050,22 +987,40 @@ static ngx_int_t
 ngx_http_auth_webauthn_challenge_content(ngx_http_request_t *r)
 {
     ngx_http_auth_webauthn_loc_conf_t *wlcf;
+    ngx_auth_webauthn_redis_t *redis = NULL;
+    ngx_auth_webauthn_redis_conf_t rconf;
     u_char challenge[NGX_AUTH_WEBAUTHN_CHALLENGE_LEN];
     ngx_str_t raw, b64, body;
+    ngx_int_t rc;
     u_char *p;
 
     wlcf = ngx_http_get_module_loc_conf(r, ngx_http_auth_webauthn_module);
 
-    if (wlcf->challenge_zone == NULL || wlcf->rp_id.len == 0) {
+    if (wlcf->rp_id.len == 0 || wlcf->redis_host.len == 0) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "auth_webauthn: challenge handler needs "
-                      "auth_webauthn_challenge_zone and auth_webauthn_rp_id");
+                      "auth_webauthn_rp_id and auth_webauthn_redis");
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (ngx_auth_webauthn_challenge_issue(wlcf->challenge_zone, challenge,
-                                          wlcf->challenge_ttl) != NGX_OK)
+    ngx_memzero(&rconf, sizeof(rconf));
+    rconf.host = wlcf->redis_host;
+    rconf.port = (int) wlcf->redis_port;
+    rconf.password = wlcf->redis_password;
+    rconf.db = wlcf->redis_db;
+    rconf.timeout_ms = wlcf->redis_timeout;
+
+    if (ngx_auth_webauthn_redis_connect(r->pool, r->connection->log, &rconf,
+                                        &redis) != NGX_OK)
     {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    rc = ngx_auth_webauthn_challenge_issue(redis, r->pool,
+                                           &wlcf->redis_key_prefix,
+                                           wlcf->challenge_ttl, challenge);
+    ngx_auth_webauthn_redis_close(redis);
+    if (rc != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
@@ -1192,7 +1147,7 @@ ngx_http_auth_webauthn_verify_done(ngx_http_request_t *r)
 
     wlcf = ngx_http_get_module_loc_conf(r, ngx_http_auth_webauthn_module);
 
-    if (wlcf->challenge_zone == NULL || wlcf->rp_id.len == 0
+    if (wlcf->rp_id.len == 0
         || wlcf->redis_host.len == 0 || wlcf->jwt_secret.len == 0
         || wlcf->origins == NULL)
     {
@@ -1241,7 +1196,7 @@ ngx_http_auth_webauthn_verify_done(ngx_http_request_t *r)
         goto reject;
     }
 
-    /* Extract and consume the challenge named inside clientDataJSON. */
+    /* Extract the challenge named inside clientDataJSON (consumed below). */
     {
         nxe_json_t *cdj = nxe_json_parse_untrusted(&assertion.client_data_json,
                                                    r->pool);
@@ -1265,15 +1220,8 @@ ngx_http_auth_webauthn_verify_done(ngx_http_request_t *r)
         goto reject;
     }
 
-    if (ngx_auth_webauthn_challenge_consume(wlcf->challenge_zone,
-                                            challenge_raw.data,
-                                            challenge_raw.len) != NGX_OK)
-    {
-        /* unknown / expired / already used */
-        goto reject;
-    }
-
-    /* Fetch the stored credential from Redis. */
+    /* Open the Redis connection shared by the challenge consume below and the
+     * credential lookup that follows. */
     ngx_memzero(&rconf, sizeof(rconf));
     rconf.host = wlcf->redis_host;
     rconf.port = (int) wlcf->redis_port;
@@ -1288,6 +1236,17 @@ ngx_http_auth_webauthn_verify_done(ngx_http_request_t *r)
         return;
     }
 
+    /* Atomically consume the challenge named inside clientDataJSON (GETDEL). */
+    if (ngx_auth_webauthn_challenge_consume(redis, r->pool,
+                                            &wlcf->redis_key_prefix,
+                                            challenge_raw.data,
+                                            challenge_raw.len) != NGX_OK)
+    {
+        /* unknown / expired / already used */
+        goto reject_redis;
+    }
+
+    /* Fetch the stored credential from Redis. */
     ngx_memzero(&cred, sizeof(cred));
     rc = ngx_auth_webauthn_credential_get(redis, r->pool,
                                           &wlcf->redis_key_prefix, &id, &cred);
