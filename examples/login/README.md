@@ -42,9 +42,6 @@ setup.
 
 ```nginx
 http {
-    # shared memory for challenges (required in the http context)
-    auth_webauthn_challenge_zone webauthn_challenge:10m;
-
     # RP / origin (required for WebAuthn verification)
     auth_webauthn_rp_id      example.com;
     auth_webauthn_origin     https://example.com;
