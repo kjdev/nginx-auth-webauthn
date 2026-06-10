@@ -80,6 +80,25 @@ GET /webauthn/challenge?user_id=nobody
 
 
 
+=== challenge: percent-encoded user_id is decoded before the Redis lookup
+# The admin CLI stores the credential under the decoded id "a@b.com", while the
+# client sends it percent-encoded ("a%40b.com"). The handler must decode the
+# query arg so the index key matches and allowCredentials is non-empty.
+--- config
+    include $TEST_NGINX_CONF_DIR/server.conf;
+    location = /webauthn/challenge {
+        auth_webauthn_challenge_handler on;
+    }
+--- init
+    system("redis-cli -p 6379 flushall >/dev/null 2>&1");
+    WebAuthn::seed(user => "a\@b.com", cid => $main::CID, key => $main::KEY);
+--- request
+GET /webauthn/challenge?user_id=a%40b.com
+--- error_code: 200
+--- response_body_like: "allowCredentials":\[\{"type":"public-key","id":"[A-Za-z0-9_-]+"\}\]\}$
+
+
+
 === challenge: userVerification policy is reflected
 --- config
     include $TEST_NGINX_CONF_DIR/server.conf;
