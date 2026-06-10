@@ -1146,7 +1146,7 @@ ngx_http_auth_webauthn_challenge_content(ngx_http_request_t *r)
     ngx_uint_t ncreds = 0, i;
     ngx_int_t rc;
     size_t size, sum = 0;
-    u_char *p;
+    u_char *p, *src, *dst;
 
     wlcf = ngx_http_get_module_loc_conf(r, ngx_http_auth_webauthn_module);
 
@@ -1192,6 +1192,21 @@ ngx_http_auth_webauthn_challenge_content(ngx_http_request_t *r)
     if (ngx_http_arg(r, (u_char *) "user_id", 7, &uid) == NGX_OK
         && uid.len > 0)
     {
+        /*
+         * ngx_http_arg returns the raw query bytes; percent-decode so a
+         * user_id the client sends percent-encoded (e.g. "a@b.com") matches
+         * the decoded id stored under {prefix}user:{id}:creds at register.
+         */
+        dst = ngx_pnalloc(r->pool, uid.len);
+        if (dst == NULL) {
+            ngx_auth_webauthn_redis_close(redis);
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+        src = uid.data;
+        uid.data = dst;
+        ngx_unescape_uri(&dst, &src, uid.len, 0);
+        uid.len = dst - uid.data;
+
         index_key.len = wlcf->redis_key_prefix.len
                         + (sizeof("user:") - 1) + uid.len
                         + (sizeof(":creds") - 1);
