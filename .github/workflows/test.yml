@@ -1,0 +1,238 @@
+name: test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions: {}
+
+defaults:
+  run:
+    shell: sh
+
+jobs:
+  # WebAuthn-specific unit tests (tests/unit). No nginx runtime is needed; the
+  # shared sources link the ngx_compat shim. Redis-dependent cases run only when
+  # WEBAUTHN_TEST_REDIS is set, so a local redis-server is started.
+  unit:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            ca-certificates \
+            curl \
+            libssl-dev \
+            libjansson-dev \
+            libhiredis-dev \
+            libcbor-dev \
+            redis-server
+        env:
+          DEBIAN_FRONTEND: noninteractive
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          set-safe-directory: true
+          persist-credentials: false
+          submodules: true
+          token: ${{ github.token }}
+
+      - name: Run unit tests
+        run: |
+          # Run Redis
+          echo "::group::run redis"
+          redis-cli ping >/dev/null 2>&1 || redis-server --daemonize yes
+          echo "::endgroup::"
+          # Run test
+          cd tests/unit
+          make test
+        env:
+          WEBAUTHN_TEST_REDIS: 127.0.0.1:6379
+    timeout-minutes: 15
+
+  # Test::Nginx integration tests (t/). Build the module and admin CLI first,
+  # then drive the freshly built nginx binary. Redis-dependent files self-skip
+  # when 6379 is closed, so a local redis-server (with redis-cli for flushall)
+  # is started before the tests.
+  integration:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - if: ${{ matrix.nginx != 'alpine' }}
+        name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            ca-certificates \
+            cpanminus \
+            curl \
+            gnupg \
+            libssl-dev \
+            libjansson-dev \
+            libhiredis-dev \
+            libcbor-dev \
+            nginx \
+            nginx-dev \
+            python3-cryptography \
+            redis-server
+          sudo cpanm -n Test::Nginx
+        env:
+          nginx_version: ${{ matrix.nginx }}
+          DEBIAN_FRONTEND: noninteractive
+          PERL_MM_USE_DEFAULT: 1
+      - if: ${{ matrix.nginx == 'alpine' }}
+        name: Install build dependencies with Alpine
+        run: |
+          apk add \
+            bash \
+            curl \
+            gcc \
+            gd-dev \
+            geoip-dev \
+            git \
+            hiredis-dev \
+            jansson-dev \
+            libcbor-dev \
+            libxslt-dev \
+            linux-headers \
+            make \
+            musl-dev \
+            nginx \
+            openssl-dev \
+            pcre2-dev \
+            perl-dev \
+            perl-utils \
+            py3-cryptography \
+            redis \
+            zlib-dev
+          cpan -Ti Test::Nginx
+        env:
+          PERL_MM_USE_DEFAULT: 1
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          set-safe-directory: true
+          persist-credentials: false
+          submodules: recursive
+
+      - if: ${{ matrix.nginx == 'ubuntu' || matrix.nginx == 'alpine' }}
+        name: Build NGINX module with distribution
+        run: |
+          # Download Nginx
+          nginx_version="$(nginx -v 2>&1 | sed -e 's/^[^0-9]*//' -e 's/ .*$//')"
+          curl -sL -o "nginx-${nginx_version}.tar.gz" "https://nginx.org/download/nginx-${nginx_version}.tar.gz"
+          tar xf "nginx-${nginx_version}.tar.gz"
+          cd "nginx-${nginx_version}"
+          # Configure option
+          opt=$(nginx -V 2>&1 | tail -1 | sed -e 's/configure arguments://' -e 's| --add-dynamic-module=[^ ]*||g')
+          with_cc_opt=$(echo "${opt}" | grep -e "--with-cc-opt='[^']*'" -o | sed -e "s/^--with-cc-opt='//" -e "s/'$//")
+          with_ld_opt=$(echo "${opt}" | grep -e "--with-ld-opt='[^']*'" -o | sed -e "s/^--with-ld-opt='//" -e "s/'$//")
+          opt=$(echo "${opt}" | sed -e "s|--with-cc-opt='[^']*'||" -e "s|--with-ld-opt='[^']*'||" -e 's/--without-engine//')
+          # Run build
+          # shellcheck disable=SC2086
+          ./configure \
+            ${opt} \
+            --with-cc-opt="${with_cc_opt} -DNGX_HTTP_HEADERS" \
+            --with-ld-opt="${with_ld_opt}" \
+            --add-dynamic-module=..
+          make modules
+          # Copy module
+          if [ "${dist}" = "ubuntu" ]; then
+            sudo=sudo
+          fi
+          ${sudo} mkdir -p /usr/lib/nginx/modules
+          ${sudo} cp objs/ngx_http_auth_webauthn_module.so /usr/lib/nginx/modules/
+          ${sudo} mkdir -p /usr/local/sbin
+          ${sudo} ln -sfn /usr/sbin/nginx /usr/local/sbin/nginx
+        env:
+          dist: ${{ matrix.nginx }}
+      - if: ${{ matrix.nginx != 'ubuntu' && matrix.nginx != 'alpine' }}
+        name: Build NGINX module with sources
+        run: |
+          # Download Nginx
+          curl -sL -o "nginx-${nginx_version}.tar.gz" "https://nginx.org/download/nginx-${nginx_version}.tar.gz"
+          tar xf "nginx-${nginx_version}.tar.gz"
+          cd "nginx-${nginx_version}"
+          # Run build
+          ./configure \
+            --with-compat \
+            --add-dynamic-module=..
+          make
+          # Copy module
+          sudo mkdir -p /usr/lib/nginx/modules
+          sudo cp objs/ngx_http_auth_webauthn_module.so /usr/lib/nginx/modules/
+          sudo cp objs/nginx /usr/local/sbin/
+        env:
+          nginx_version: ${{ matrix.nginx }}
+
+      - name: Build admin CLI
+        run: |
+          cd tools/admin
+          make
+          # Copy
+          if [ ! "${dist}" = "alpine" ]; then
+            sudo=sudo
+          fi
+          ${sudo} mkdir -p /usr/local/bin
+          ${sudo} cp auth-webauthn-admin /usr/local/bin/
+        env:
+          dist: ${{ matrix.nginx }}
+
+      - name: Run integration tests
+        run: |
+          # nginx
+          echo "::group::nginx show version"
+          ${TEST_NGINX_BINARY} -V
+          echo "::endgroup::"
+          # Run Redis
+          echo "::group::run redis"
+          redis-cli ping >/dev/null 2>&1 || redis-server --daemonize yes
+          echo "::endgroup::"
+          # Run test
+          export TEST_NGINX_CONF_DIR="${PWD}/t/conf"
+          export TEST_NGINX_DATA_DIR="${PWD}/t/data"
+          set +e
+          prove -r t 2> stderr.log
+          test_status=$?
+          set -e
+          # stderr
+          if [ -s stderr.log ]; then
+            echo "::group::stderr"
+            cat stderr.log
+            echo "::endgroup::"
+          fi
+          exit "${test_status}"
+        env:
+          TEST_NGINX_LOAD_MODULES: /usr/lib/nginx/modules/ngx_http_auth_webauthn_module.so
+          TEST_NGINX_PORT: 1984
+          TEST_NGINX_SERVROOT: /tmp/servroot
+          TEST_NGINX_BINARY: /usr/local/sbin/nginx
+          TEST_NGINX_ADMIN_BIN: /usr/local/bin/auth-webauthn-admin
+
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        nginx:
+          - alpine
+          - ubuntu
+          - '1.30.2' # stable
+          - '1.31.1' # mainline
+    container:
+      image: ${{ matrix.nginx == 'alpine' && 'alpine:latest' || null }}
+      options: ${{ matrix.nginx == 'alpine' && '--init' || null }}
