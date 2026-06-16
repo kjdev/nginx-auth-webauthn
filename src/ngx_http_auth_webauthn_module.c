@@ -995,8 +995,6 @@ ngx_http_auth_webauthn_send_json(ngx_http_request_t *r, ngx_uint_t status,
     out.buf = b;
     out.next = NULL;
 
-    r->headers_out.status = status;
-
     {
         ngx_int_t rc = ngx_http_send_header(r);
         if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
@@ -1735,10 +1733,21 @@ ngx_http_auth_webauthn_apply_headers(ngx_http_request_t *r,
         if (h == NULL) {
             return NGX_ERROR;
         }
-        h->hash = 1;
         h->key = hdrs[i].name;
         h->value = value;
-        h->lowcase_key = h->key.data;
+
+        /*
+         * headers_in is hashed on the lowercased name, so lowcase_key must
+         * point at a lowercase copy (not the as-configured mixed-case name)
+         * and hash must be computed from it.  Otherwise $http_<name> lookups
+         * and proxy_set_header reads of the injected header miss.
+         */
+        h->lowcase_key = ngx_pnalloc(r->pool, h->key.len);
+        if (h->lowcase_key == NULL) {
+            return NGX_ERROR;
+        }
+        ngx_strlow(h->lowcase_key, h->key.data, h->key.len);
+        h->hash = ngx_hash_key(h->lowcase_key, h->key.len);
         h->next = NULL;
     }
 
@@ -1754,7 +1763,7 @@ ngx_http_auth_webauthn_access_handler(ngx_http_request_t *r)
     nxe_jwx_token_t *token;
     nxe_jwx_jwks_t *jwks;
     nxe_json_t *payload;
-    ngx_str_t cookie_name, cookie_val, sub;
+    ngx_str_t cookie_name, cookie_val, sub, aud, iss;
     int64_t exp;
 
     wlcf = ngx_http_get_module_loc_conf(r, ngx_http_auth_webauthn_module);
@@ -1807,7 +1816,31 @@ ngx_http_auth_webauthn_access_handler(ngx_http_request_t *r)
         return ngx_http_auth_webauthn_unauthorized(r, wlcf);
     }
 
-    /* Registered-claim policy: enforce exp ourselves (nxe-jwx does not). */
+    /*
+     * Registered-claim policy (nxe-jwx verifies only the signature):
+     *
+     * Pin aud to this location's rp_id and iss to the minting literal so a
+     * token minted for one relying party is not accepted by another gate that
+     * happens to share the same jwt_secret_file.  Without this, a session
+     * cookie for app A would authenticate at app B's gate.
+     */
+    if (nxe_jwx_claims_get_string(payload, "aud", &aud) != NGX_OK
+        || aud.len != wlcf->rp_id.len
+        || ngx_memcmp(aud.data, wlcf->rp_id.data, aud.len) != 0)
+    {
+        ngx_str_set(&ctx->auth_status, "invalid");
+        return ngx_http_auth_webauthn_unauthorized(r, wlcf);
+    }
+
+    if (nxe_jwx_claims_get_string(payload, "iss", &iss) != NGX_OK
+        || iss.len != sizeof("nginx-webauthn") - 1
+        || ngx_memcmp(iss.data, "nginx-webauthn", iss.len) != 0)
+    {
+        ngx_str_set(&ctx->auth_status, "invalid");
+        return ngx_http_auth_webauthn_unauthorized(r, wlcf);
+    }
+
+    /* Enforce exp ourselves (nxe-jwx does not). */
     if (nxe_jwx_claims_get_integer(payload, "exp", &exp) != NGX_OK
         || exp <= (int64_t) ngx_time())
     {
