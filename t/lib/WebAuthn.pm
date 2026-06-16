@@ -162,6 +162,7 @@ sub secret {
 
 # Mint an HS256 session JWT. Used for gate (access_handler) verification.
 # opt: sub, cid, exp (absolute epoch, defaults to now+3600), alg ('HS256'|'none'),
+#      aud (defaults to 'localhost'), iss (defaults to 'nginx-webauthn'),
 #      tamper (corrupt the last byte of the signature).
 sub mint_jwt {
     my (%opt) = @_;
@@ -170,9 +171,11 @@ sub mint_jwt {
     my $exp = defined $opt{exp} ? $opt{exp} : $now + 3600;
     my $sub = $opt{sub} // 'alice';
     my $cid = $opt{cid} // 'Y3JlZA';
+    my $aud = $opt{aud} // 'localhost';
+    my $iss = $opt{iss} // 'nginx-webauthn';
 
     my $header  = qq({"alg":"$alg","typ":"JWT"});
-    my $payload = qq({"iss":"nginx-webauthn","aud":"localhost","sub":"$sub",)
+    my $payload = qq({"iss":"$iss","aud":"$aud","sub":"$sub",)
                 . qq("cid":"$cid","iat":$now,"exp":$exp,"jti":"dGVzdGp0aQ"});
 
     my $signing = _b64url($header) . '.' . _b64url($payload);
