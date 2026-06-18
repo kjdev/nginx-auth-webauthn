@@ -214,4 +214,7 @@ if __name__ == "__main__":
     # proxy to it (the browser-facing origin stays http://localhost:8080).
     host = os.environ.get("WEBAUTHN_BIND_HOST", "127.0.0.1")
     port = int(os.environ.get("WEBAUTHN_BIND_PORT", "5000"))
-    app.run(host=host, port=port, debug=True)
+    # Debug mode exposes the Werkzeug debugger, which allows arbitrary code
+    # execution. Keep it off unless explicitly opted in for local development.
+    debug = os.environ.get("WEBAUTHN_DEBUG", "").lower() in ("1", "true", "yes")
+    app.run(host=host, port=port, debug=debug)
