@@ -10,7 +10,7 @@ Initial release. Once a public key is registered in Redis, the full path of asse
 
 #### NGINX module
 
-- `auth_webauthn` location protection gate (JWT cookie verification at the access phase)
+- `auth_webauthn` location protection gate (JWT cookie verification at the access phase; validates the signature, `aud` (=`rp_id`), `iss` (=`nginx-webauthn`), and `exp` to prevent cross-app token reuse under a shared HMAC secret)
 - `/webauthn/challenge` endpoint (`auth_webauthn_challenge_handler`) — issues a 32-byte CSPRNG challenge. When `?user_id=<id>` is given, returns that user's `allowCredentials` (an empty array even for unregistered users, to hide their existence)
 - `auth_webauthn_user_verification` (`required` makes the UV flag mandatory at `/webauthn/verify`) / `auth_webauthn_challenge_rate_limit` (per-IP issuance rate limiting via Redis INCR)
 - `/webauthn/verify` endpoint (`auth_webauthn_verify_handler`) — assertion verification and session JWT issuance
@@ -50,7 +50,6 @@ Initial release. Once a public key is registered in Redis, the full path of asse
 ### Known limitations
 
 - User Verification (UV) is not required by default (UP is always required; UV can be made mandatory with `auth_webauthn_user_verification required`)
-- The JWT `iss` / `aud` are issued but not validated at the protection gate (only the signature and `exp` are checked)
 - Attestation supports only `none` / `packed` self (certificate-based attestation is not supported)
 - `allowCredentials` is empty by default (assumes discoverable credentials; returned only when `?user_id=` is given)
 - Credential registration is only via the CLI / Python sample (the in-NGINX registration handler is not implemented)
