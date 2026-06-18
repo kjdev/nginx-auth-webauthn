@@ -17,6 +17,11 @@ my $RP_ID  = 'localhost';
 my $ORIGIN = 'http://localhost:8080';
 my $REDIS  = '127.0.0.1:6379';
 
+# Keep File::Temp objects alive for the whole process: their paths are handed
+# out and used later, but the secret key files must still be removed when the
+# test process exits (File::Temp unlinks on destruction by default).
+my @TEMP_FILES;
+
 sub _tool { return "$ENV{TEST_NGINX_DATA_DIR}/webauthn_tool.py"; }
 sub _admin { return $ENV{TEST_NGINX_ADMIN_BIN}; }
 sub _port { return $Test::Nginx::Util::ServerPort; }
@@ -44,9 +49,10 @@ sub redis_up {
 }
 
 # Generate an ES256 key + credential id. Returns ($cid, $key_pem_path).
-# The key file is held by File::Temp and persists until the process exits.
+# The key file is kept alive via @TEMP_FILES and removed at process exit.
 sub keygen {
-    my $tmp = File::Temp->new(SUFFIX => '.pem', UNLINK => 0);
+    my $tmp = File::Temp->new(SUFFIX => '.pem');
+    push @TEMP_FILES, $tmp;
     my $key = $tmp->filename;
     my $cid = `python3 @{[_tool]} keygen --out $key`;
     die "keygen failed" if $? != 0;
@@ -61,7 +67,8 @@ sub seed {
     my $cid  = $opt{cid}  or die "seed: cid required";
     my $key  = $opt{key}  or die "seed: key required";
 
-    my $att = File::Temp->new(SUFFIX => '.json', UNLINK => 0);
+    my $att = File::Temp->new(SUFFIX => '.json');
+    push @TEMP_FILES, $att;
     my $att_path = $att->filename;
     system("python3 @{[_tool]} attestation --key $key --cid $cid"
            . " --rp-id $RP_ID --origin $ORIGIN > $att_path") == 0
