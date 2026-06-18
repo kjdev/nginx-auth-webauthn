@@ -15,15 +15,20 @@ ngx_auth_webauthn_hash_sha256(const u_char *data, size_t len, u_char *out)
 {
     unsigned int digest_len;
 
-    if (out == NULL) {
+    if (out == NULL || (data == NULL && len != 0)) {
         return NGX_ERROR;
     }
 
     /*
      * EVP_Digest is the single-shot form: it allocates, inits, updates and
      * finalises a context internally, so there is no EVP_MD_CTX to manage.
+     * For the empty input, pass a non-NULL pointer: a NULL data pointer is
+     * undefined behaviour even when len is 0.
      */
-    if (EVP_Digest(data, len, out, &digest_len, EVP_sha256(), NULL) != 1) {
+    if (EVP_Digest(len == 0 ? (const u_char *) "" : data, len, out,
+                   &digest_len, EVP_sha256(), NULL)
+        != 1)
+    {
         return NGX_ERROR;
     }
 
