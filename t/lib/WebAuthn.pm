@@ -70,7 +70,10 @@ sub seed {
     my $att = File::Temp->new(SUFFIX => '.json');
     push @TEMP_FILES, $att;
     my $att_path = $att->filename;
-    system("python3 @{[_tool]} attestation --key $key --cid $cid"
+    # A base64url credential id can begin with '-', which argparse would
+    # otherwise treat as an option flag (failing with "expected one argument").
+    # Pass it as --cid=VALUE so the value is always taken literally.
+    system("python3 @{[_tool]} attestation --key $key --cid=$cid"
            . " --rp-id $RP_ID --origin $ORIGIN > $att_path") == 0
         or die "attestation failed";
 
@@ -108,9 +111,11 @@ sub assertion_body {
     my $cid = $opt{cid} or die "assertion_body: cid required";
     my $ch  = $opt{challenge} // fetch_challenge();
 
+    # cid and challenge are base64url and can begin with '-'; pass them as
+    # --opt=VALUE so argparse does not mistake the value for an option flag.
     my @args = ('python3', _tool(), 'assertion', '--key', $key,
-                '--cid', $cid, '--rp-id', $RP_ID, '--origin', $ORIGIN,
-                '--challenge', $ch);
+                "--cid=$cid", '--rp-id', $RP_ID, '--origin', $ORIGIN,
+                "--challenge=$ch");
     push @args, '--sign-count', $opt{sign_count} if defined $opt{sign_count};
     push @args, '--type', $opt{type}             if defined $opt{type};
     push @args, '--bad-origin'                   if $opt{bad_origin};
