@@ -43,8 +43,10 @@ ngx_auth_webauthn_challenge_issue(ngx_auth_webauthn_redis_t *redis,
     u_char challenge[NGX_AUTH_WEBAUTHN_CHALLENGE_LEN];
     ngx_str_t key, value;
 
+    /* Reject TTLs above UINT32_MAX so the cast to ngx_uint_t below cannot
+     * silently truncate to a shorter expiry on 32-bit platforms. */
     if (redis == NULL || pool == NULL || key_prefix == NULL || out == NULL
-        || ttl <= 0)
+        || ttl <= 0 || ttl > (time_t) UINT32_MAX)
     {
         return NGX_ERROR;
     }
