@@ -11,6 +11,7 @@
 #include "ngx_auth_webauthn_hash.h"
 
 #include <cbor.h>
+#include <openssl/crypto.h>
 #include <openssl/evp.h>
 
 
@@ -357,7 +358,7 @@ ngx_auth_webauthn_attestation_verify(ngx_pool_t *pool,
         return NGX_ERROR;
     }
 
-    if (ngx_memcmp(ad.rp_id_hash, rp_id_hash, NGX_AUTH_WEBAUTHN_SHA256_LEN)
+    if (CRYPTO_memcmp(ad.rp_id_hash, rp_id_hash, NGX_AUTH_WEBAUTHN_SHA256_LEN)
         != 0)
     {
         return NGX_DECLINED;

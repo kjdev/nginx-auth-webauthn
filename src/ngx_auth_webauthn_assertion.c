@@ -9,6 +9,7 @@
 #include "ngx_auth_webauthn_clientdata.h"
 #include "ngx_auth_webauthn_hash.h"
 
+#include <openssl/crypto.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
@@ -164,7 +165,7 @@ ngx_auth_webauthn_assertion_verify(ngx_pool_t *pool,
         return NGX_ERROR;
     }
 
-    if (ngx_memcmp(rp_id_hash, ad.rp_id_hash, NGX_AUTH_WEBAUTHN_SHA256_LEN)
+    if (CRYPTO_memcmp(rp_id_hash, ad.rp_id_hash, NGX_AUTH_WEBAUTHN_SHA256_LEN)
         != 0)
     {
         return NGX_DECLINED;

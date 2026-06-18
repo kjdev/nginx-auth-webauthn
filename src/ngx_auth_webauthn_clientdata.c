@@ -8,6 +8,7 @@
 #include "ngx_auth_webauthn_clientdata.h"
 
 #include "nxe_json.h"
+#include <openssl/crypto.h>
 
 
 static ngx_int_t
@@ -102,7 +103,12 @@ ngx_auth_webauthn_clientdata_verify(ngx_pool_t *pool, const u_char *data,
         goto done;
     }
 
-    if (!ngx_auth_webauthn_str_equal(&challenge, expected_challenge)) {
+    /* Compare the secret challenge in constant time to avoid leaking it. */
+    if (challenge.len != expected_challenge->len
+        || CRYPTO_memcmp(challenge.data, expected_challenge->data,
+                         challenge.len)
+        != 0)
+    {
         rc = NGX_DECLINED;
         goto done;
     }
