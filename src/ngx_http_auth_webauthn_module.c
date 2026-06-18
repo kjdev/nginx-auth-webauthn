@@ -19,6 +19,18 @@
 #include <openssl/pem.h>
 
 
+/* ngx_http_parse_cookie_lines() was split out (with ';' as the cookie
+ * separator) in nginx 1.29.6; older releases parse cookies through
+ * ngx_http_parse_multi_header_lines(), which itself terminated on ';' back
+ * then. Both share the same signature, so alias to whichever the build's
+ * nginx provides. */
+#if (nginx_version >= 1029006)
+#define ngx_http_auth_webauthn_parse_cookie  ngx_http_parse_cookie_lines
+#else
+#define ngx_http_auth_webauthn_parse_cookie  ngx_http_parse_multi_header_lines
+#endif
+
+
 #define NGX_AUTH_WEBAUTHN_JTI_LEN  16  /* random bytes for the JWT jti */
 
 /* Bound the POST body the verify handler will buffer (a PublicKeyCredential
@@ -1788,8 +1800,8 @@ ngx_http_auth_webauthn_access_handler(ngx_http_request_t *r)
 
     cookie_name = wlcf->cookie_name;
     if (r->headers_in.cookie == NULL
-        || ngx_http_parse_cookie_lines(r, r->headers_in.cookie,
-                                       &cookie_name, &cookie_val) == NULL)
+        || ngx_http_auth_webauthn_parse_cookie(r, r->headers_in.cookie,
+                                                &cookie_name, &cookie_val) == NULL)
     {
         return ngx_http_auth_webauthn_unauthorized(r, wlcf);
     }
