@@ -191,12 +191,14 @@ sub mint_jwt {
         return $signing . '.';
     }
 
-    my $sig = _b64url(hmac_sha256($signing, secret()));
+    my $raw = hmac_sha256($signing, secret());
     if ($opt{tamper}) {
-        my $c = substr($sig, -1);
-        substr($sig, -1) = ($c eq 'A' ? 'B' : 'A');
+        # Flip a whole byte before encoding. Corrupting the last base64url
+        # character would only change padding bits ~1/16 of the time, leaving
+        # the decoded HMAC (and thus the signature) unchanged.
+        substr($raw, 0, 1) = chr(ord(substr($raw, 0, 1)) ^ 0xFF);
     }
-    return "$signing.$sig";
+    return "$signing." . _b64url($raw);
 }
 
 1;
