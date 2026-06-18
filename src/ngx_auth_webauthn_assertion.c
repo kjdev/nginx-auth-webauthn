@@ -124,7 +124,8 @@ ngx_auth_webauthn_assertion_verify(ngx_pool_t *pool,
     ngx_auth_webauthn_authdata_t ad;
 
     if (pool == NULL || assertion == NULL || cred == NULL || policy == NULL
-        || result == NULL)
+        || result == NULL
+        || (policy->norigins > 0 && policy->allowed_origins == NULL))
     {
         return NGX_ERROR;
     }

@@ -54,7 +54,8 @@ ngx_auth_webauthn_clientdata_verify(ngx_pool_t *pool, const u_char *data,
     ngx_int_t rc;
 
     if (pool == NULL || data == NULL || expected_type == NULL
-        || expected_challenge == NULL)
+        || expected_challenge == NULL
+        || (norigins > 0 && allowed_origins == NULL))
     {
         return NGX_ERROR;
     }
