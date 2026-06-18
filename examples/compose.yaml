@@ -46,7 +46,9 @@ services:
       - register
     volumes:
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
-      - ./docker/nginx/jwt.key:/etc/nginx/webauthn/jwt.key
+      # Generate the session-JWT secret at startup instead of committing one to
+      # the repo (a committed secret would let anyone forge a session JWT).
+      - ./docker/nginx/90-gen-webauthn-jwt-key.sh:/docker-entrypoint.d/90-gen-webauthn-jwt-key.sh
       - ./login:/usr/share/nginx/html/login
       - ./register/index.html:/usr/share/nginx/html/register/index.html
       - ./register/register.js:/usr/share/nginx/html/register/register.js
