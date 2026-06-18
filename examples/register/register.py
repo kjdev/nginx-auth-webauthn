@@ -200,8 +200,10 @@ def register_complete():
     try:
         auth_data = server.register_complete(state, request.get_json())
         cid_b64 = store_credential(user_id, auth_data)
-    except Exception as exc:  # noqa: BLE001 - surface any failure to the client
-        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception:  # noqa: BLE001 - log details server-side, hide from client
+        # Avoid leaking exception details (stack trace internals) to the client.
+        app.logger.exception("registration completion failed")
+        return jsonify({"ok": False, "error": "registration failed"}), 400
     finally:
         session.pop("state", None)
 
