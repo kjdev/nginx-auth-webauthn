@@ -60,7 +60,7 @@ Values of `$webauthn_auth_status`:
 
 - `authenticated` — both JWT verification and expiration passed
 - `unauthenticated` — `auth_webauthn off`, or no JWT present in the cookie
-- `invalid` — JWT decoding / signature verification failed
+- `invalid` — JWT decoding / signature verification failed, or `aud` (=`rp_id`) / `iss` (=`nginx-webauthn`) verification failed
 - `expired` — the JWT `exp` is past the current time
 
 ---

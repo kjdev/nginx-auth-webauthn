@@ -51,7 +51,7 @@ On failure of `/webauthn/verify`, regardless of cause (credential absent / signa
 
 - The cookie is by default set with `HttpOnly; Secure; SameSite=Strict; Path=/`. `HttpOnly` is always added and cannot be read from JavaScript
 - Manage the signing key (`auth_webauthn_jwt_secret_file`) with permissions 0600. For HS256, use a random key of 32 bytes or more
-- The protection gate verifies the signature and `exp`. Exceeding `exp` is rejected as `expired`
+- The protection gate verifies the signature, `aud`, `iss`, and `exp`. Exceeding `exp` is rejected as `expired`; a mismatch of `aud` (=`auth_webauthn_rp_id`) or `iss` (=`nginx-webauthn`) is rejected as `invalid`
 - When using `SameSite=None`, `Secure` is required
 
 ## Security of the Redis connection
@@ -70,13 +70,13 @@ On failure of `/webauthn/verify`, regardless of cause (credential absent / signa
 - **HTTPS required**: WebAuthn works only in a secure context (except `localhost`)
 - Always confirm that the domains of `rp_id` and `origin` are consistent (a mismatch is a cause of all Assertions failing)
 - Build key / Redis-password rotation procedures into your operations
+- When multiple `server` / `location` blocks share one `auth_webauthn_jwt_secret_file` (HMAC secret), sessions are separated across apps by `aud` (=`auth_webauthn_rp_id`). Give apps that must stay isolated distinct `rp_id` values; sharing the same `rp_id` lets a session cookie work across them
 
 ## Known limitations (current version)
 
 The following are implementation limitations of the current version. Be aware of them in operation.
 
 - **User Verification (UV) is not enforced by default**: UP (User Present) is always required. UV (user verification via biometrics / PIN) can be enforced at `/webauthn/verify` by setting `auth_webauthn_user_verification required` (assertions without the UV flag get 401). With the default `preferred`, the challenge response merely advertises `preferred` and assertions without UV still pass. Set `required` if you need multi-factor-equivalent assurance
-- **JWT `iss` / `aud` are not verified**: at issuance, `iss=nginx-webauthn` / `aud=<rp_id>` are set, but the protection gate verifies only the signature and `exp`
 - **Attestation only at registration**: only `none` or `packed` self-attestation is supported. Certificate-based attestation (`tpm` / `apple` / `fido-u2f`, etc.) is not supported
 - **`allowCredentials` is empty by default**: it presupposes discoverable credentials (resident keys). Fetching the challenge with `?user_id=<id>` returns that user's credential ids (an unknown user still gets an empty array, so existence is not leaked)
 
