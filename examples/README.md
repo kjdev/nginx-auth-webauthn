@@ -10,7 +10,7 @@ examples/
 ├── docker/
 │   ├── nginx/
 │   │   ├── default.conf   server config mounted into conf.d (used by compose)
-│   │   ├── jwt.key        sample HS256 secret (replace in production)
+│   │   ├── 90-gen-webauthn-jwt-key.sh  startup hook that generates the HS256 secret
 │   │   └── protected/     success page behind the auth gate
 │   └── register/
 │       └── Dockerfile     image for the development registration server (Flask)
@@ -161,8 +161,11 @@ origin. The `<meta>` defaults in `examples/login/` and `examples/register/`
 
 ## Notes
 
-- `docker/nginx/jwt.key` is a sample HS256 secret. **Always replace it in
-  production** (e.g. `openssl rand -hex 32 > jwt.key`).
+- The session-JWT HS256 secret is **generated at container start** by
+  `docker/nginx/90-gen-webauthn-jwt-key.sh` (a `/docker-entrypoint.d` hook) and
+  is never committed to the repo, so no shared secret ships with the example. A
+  fresh secret each start means session cookies stop validating after a restart.
+  In production, provision the secret yourself (e.g. `openssl rand -hex 32`).
 - The Flask server under `register/` is for development and learning. It does
   not meet operational requirements such as authentication, rate limiting or
   CSRF protection (details in [`register/README.md`](register/README.md)).
