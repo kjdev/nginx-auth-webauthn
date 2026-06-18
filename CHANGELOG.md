@@ -56,6 +56,7 @@ Initial release. Once a public key is registered in Redis, the full path of asse
 
 ### Dependencies
 
+- nginx 1.24.0+ (cookie parsing falls back to the older API on nginx before 1.29.6)
 - OpenSSL 3.0+ / hiredis / libcbor (CLI) / jansson (via nxe-json)
 - submodules: `nxe-json` (JSON) / `nxe-jwx` (JWT)
 
