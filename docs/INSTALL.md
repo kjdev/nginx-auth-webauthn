@@ -100,7 +100,7 @@ Steps to verify operation after building:
 3. Register a test credential with the CLI (the registration Python sample `examples/register/` is also available)
 4. Authenticate from the browser using `examples/login/`
 
-To try the full E2E in one shot with docker compose: `cd examples && docker compose up --build` (http://localhost:8080). For developer-oriented build and test steps.
+To try the full E2E in one shot with docker compose: `cd examples && docker compose up --build` (http://localhost:8080).
 
 ## Troubleshooting
 
