@@ -60,14 +60,20 @@ ngx_auth_webauthn_assertion_check_signature(
     EVP_MD_CTX *ctx;
     ngx_int_t rc;
     int ret;
+    int want_type;
 
     switch (cred->alg) {
     case -7:    /* ES256 */
+        md = EVP_sha256();
+        want_type = EVP_PKEY_EC;
+        break;
     case -257:  /* RS256 */
         md = EVP_sha256();
+        want_type = EVP_PKEY_RSA;
         break;
     case -8:    /* EdDSA (Ed25519, PureEdDSA): no pre-hash */
         md = NULL;
+        want_type = EVP_PKEY_ED25519;
         break;
     default:
         return NGX_ERROR;
@@ -76,6 +82,15 @@ ngx_auth_webauthn_assertion_check_signature(
     der = cred->public_key.data;
     pkey = d2i_PUBKEY(NULL, &der, (long) cred->public_key.len);
     if (pkey == NULL) {
+        return NGX_ERROR;
+    }
+
+    /* Defense in depth: the stored alg and the stored key are independent
+     * Redis fields, so reject a record whose key type does not match the alg
+     * (e.g. alg=ES256 paired with an RSA key) rather than feeding a mismatched
+     * digest/key pair to OpenSSL. */
+    if (EVP_PKEY_base_id(pkey) != want_type) {
+        EVP_PKEY_free(pkey);
         return NGX_ERROR;
     }
 
