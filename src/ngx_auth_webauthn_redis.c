@@ -321,6 +321,15 @@ ngx_auth_webauthn_redis_hgetall(ngx_auth_webauthn_redis_t *redis,
         name = reply->element[i * 2];
         value = reply->element[i * 2 + 1];
 
+        /* A non-string element would carry a NULL str with a non-zero len on
+         * some reply types; reject rather than memcpy from NULL. */
+        if (name->type != REDIS_REPLY_STRING
+            || value->type != REDIS_REPLY_STRING)
+        {
+            rc = NGX_ERROR;
+            break;
+        }
+
         if (ngx_auth_webauthn_redis_dup(pool, name->str, name->len,
                                         &out[i].name) != NGX_OK
             || ngx_auth_webauthn_redis_dup(pool, value->str, value->len,
@@ -475,6 +484,10 @@ ngx_auth_webauthn_redis_smembers(ngx_auth_webauthn_redis_t *redis,
 
     for (i = 0; i < n; i++) {
         member = reply->element[i];
+        if (member->type != REDIS_REPLY_STRING) {
+            rc = NGX_ERROR;
+            break;
+        }
         if (ngx_auth_webauthn_redis_dup(pool, member->str, member->len,
                                         &out[i]) != NGX_OK)
         {
