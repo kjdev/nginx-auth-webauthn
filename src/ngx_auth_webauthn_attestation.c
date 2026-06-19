@@ -159,7 +159,12 @@ ngx_auth_webauthn_attestation_parse(ngx_pool_t *pool, const u_char *data,
         return NGX_DECLINED;
     }
 
-    if (result.error.code != CBOR_ERR_NONE || !cbor_isa_map(root)) {
+    /* The attestationObject is a single CBOR map with no legitimate trailing
+     * data; reject anything appended after it (cbor_load stops at the first
+     * item and would otherwise ignore the extra bytes). */
+    if (result.error.code != CBOR_ERR_NONE || result.read != len
+        || !cbor_isa_map(root))
+    {
         rc = NGX_DECLINED;
         goto done;
     }
