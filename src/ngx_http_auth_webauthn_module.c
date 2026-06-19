@@ -1027,6 +1027,11 @@ ngx_http_auth_webauthn_json_escape(ngx_pool_t *pool, ngx_str_t *src)
     u_char *p;
     size_t i;
 
+    if (src->len == 0 || src->data == NULL) {
+        out.data = (u_char *) "";
+        return out;
+    }
+
     p = ngx_pnalloc(pool, src->len * 6);
     if (p == NULL) {
         return out;
@@ -1510,13 +1515,20 @@ ngx_http_auth_webauthn_verify_done(ngx_http_request_t *r)
         goto reject_redis;
     }
 
-    /* Persist the advanced sign counter. */
+    /* Persist the advanced sign counter.  A failure here is not fatal to this
+     * authentication, but it leaves the stored counter behind, which silently
+     * weakens clone detection on the next assertion; log it so the condition
+     * is observable. */
     now = ngx_time();
-    (void) ngx_auth_webauthn_credential_update_counter(redis, r->pool,
-                                                       &wlcf->redis_key_prefix,
-                                                       &id,
-                                                       result.auth_sign_count,
-                                                       now);
+    if (ngx_auth_webauthn_credential_update_counter(redis, r->pool,
+                                                    &wlcf->redis_key_prefix,
+                                                    &id, result.auth_sign_count,
+                                                    now) != NGX_OK)
+    {
+        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                      "auth_webauthn: sign-counter update failed; clone "
+                      "detection may be degraded for this credential");
+    }
 
     ngx_auth_webauthn_redis_close(redis);
     redis = NULL;
@@ -1801,7 +1813,8 @@ ngx_http_auth_webauthn_access_handler(ngx_http_request_t *r)
     cookie_name = wlcf->cookie_name;
     if (r->headers_in.cookie == NULL
         || ngx_http_auth_webauthn_parse_cookie(r, r->headers_in.cookie,
-                                                &cookie_name, &cookie_val) == NULL)
+                                               &cookie_name,
+                                               &cookie_val) == NULL)
     {
         return ngx_http_auth_webauthn_unauthorized(r, wlcf);
     }
