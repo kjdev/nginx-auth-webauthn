@@ -47,8 +47,12 @@ ngx_compat_log_error(ngx_uint_t level, ngx_log_t *log, ngx_int_t err,
         return;
     }
 
+    /* Leave room for the widest single rewrite (3 bytes, e.g. "%zu") plus the
+     * terminating NUL.  Each '%' conversion is copied atomically within one
+     * iteration so truncation never leaves a dangling '%', which would be an
+     * incomplete conversion and undefined behavior for vfprintf. */
     q = buf;
-    for (p = fmt; *p != '\0' && q < buf + sizeof(buf) - 3; p++) {
+    for (p = fmt; *p != '\0' && q < buf + sizeof(buf) - 4; p++) {
         if (*p != '%') {
             *q++ = *p;
             continue;
@@ -67,7 +71,13 @@ ngx_compat_log_error(ngx_uint_t level, ngx_log_t *log, ngx_int_t err,
             p += 1;
 
         } else {
-            *q++ = *p;  /* '%' itself; a standard specifier follows verbatim */
+            /* '%' plus a standard specifier (or literal "%%"); copy both bytes
+             * together so a truncated tail never leaves a dangling '%'. */
+            if (p[1] == '\0') {
+                break;
+            }
+            *q++ = '%';
+            *q++ = *++p;
         }
     }
     *q = '\0';
