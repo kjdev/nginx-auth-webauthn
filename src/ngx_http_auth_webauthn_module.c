@@ -14,6 +14,7 @@
 
 #include <nxe_json.h>
 #include <nxe_jwx.h>
+#include <nxe_phase.h>
 
 #include <openssl/rand.h>
 #include <openssl/pem.h>
@@ -497,16 +498,13 @@ ngx_http_auth_webauthn_preconfiguration(ngx_conf_t *cf)
 static ngx_int_t
 ngx_http_auth_webauthn_postconfiguration(ngx_conf_t *cf)
 {
-    ngx_http_handler_pt *h;
-    ngx_http_core_main_conf_t *cmcf;
-
-    cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
-
-    h = ngx_array_push(&cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers);
-    if (h == NULL) {
+    if (nxe_phase_add_handler(cf, NGX_HTTP_ACCESS_PHASE,
+                              NXE_PHASE_PRIO_WEBAUTHN,
+                              ngx_http_auth_webauthn_access_handler,
+                              "auth_webauthn") != NGX_OK)
+    {
         return NGX_ERROR;
     }
-    *h = ngx_http_auth_webauthn_access_handler;
 
     return NGX_OK;
 }
