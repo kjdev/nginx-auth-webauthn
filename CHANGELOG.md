@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] - Unreleased
+## [Unreleased]
 
 Initial release. Once a public key is registered in Redis, the full path of assertion verification → JWT cookie issuance → passing the protected gate works end to end.
 
@@ -47,6 +47,10 @@ Initial release. Once a public key is registered in Redis, the full path of asse
 - End-to-end demo reaching registration → login → protected page via docker compose
 - nginx Docker image with the module bundled (`--with-compat` build)
 
+### Fixed
+
+- Session JWT issuance now enforces the same encoded-token size limits as verification (via nxe-jwx 0.3.0's `nxe_jwx_encode()` fix) — a long `kid` or claims payload could previously produce a cookie that `nxe_jwx_decode()` would later reject
+
 ### Known limitations
 
 - User Verification (UV) is not required by default (UP is always required; UV can be made mandatory with `auth_webauthn_user_verification required`)
@@ -58,7 +62,7 @@ Initial release. Once a public key is registered in Redis, the full path of asse
 
 - nginx 1.24.0+ (cookie parsing falls back to the older API on nginx before 1.29.6)
 - OpenSSL 3.0+ / hiredis / libcbor (CLI) / jansson (via nxe-json)
-- submodules: `nxe-json` (JSON) / `nxe-jwx` (JWT)
+- submodules: `nxe-json` (JSON) / `nxe-jwx` 0.3.0+ (JWT)
 
 ## Related documents
 
