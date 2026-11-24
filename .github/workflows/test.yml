@@ -25,7 +25,7 @@ jobs:
   unit:
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Install dependencies
         run: |
@@ -71,7 +71,7 @@ jobs:
     permissions:
       contents: read
     name: integration (${{ matrix.nginx.label }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - if: ${{ matrix.nginx.version != 'alpine' }}
         name: Install build dependencies
